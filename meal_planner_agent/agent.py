@@ -36,9 +36,19 @@ from __future__ import annotations
 import os
 import sqlite3
 import json
+
+#adk tools for maps
+from google.adk.tools import maps_local
+from google.adk.tools import maps_navigation
+
+
 from typing import Any, Dict, List, Optional
 
-from capstone_project.meal_planner_agent import meal_planner_instructions
+from capstone_project.meal_planner_agent.cost_optimizer_instructions import COST_OPTIMIZER_INSTRUCTIONS
+from capstone_project.meal_planner_agent.store_finder_instructions import STORE_FINDER_INSTRUCTIONS
+from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS, MEAL_PROFILE_INSTRUCTIONS
+from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
+from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
 from dotenv import load_dotenv
 
 from google.adk.agents import LlmAgent
@@ -47,6 +57,8 @@ from google.adk.tools import load_memory
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
 
+from capstone_project.meal_planner_agent.cost_optimizer_instructions import COST_OPTIMIZER_INSTRUCTIONS
+from capstone_project.meal_planner_agent.store_finder_instructions import STORE_FINDER_INSTRUCTIONS
 from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS, MEAL_PROFILE_INSTRUCTIONS
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
 from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
@@ -305,7 +317,7 @@ meal_profile_agent = LlmAgent(
 )
 
 # ---------------------------------------------------------------------------
-# 6.5. Shopping List agent (Meal Plan JSON → Shopping List text) <-- ADDED
+# 7. Shopping List agent (Meal Plan JSON → Shopping List text) <-- ADDED
 # ---------------------------------------------------------------------------
 
 meal_ingredients_agent = LlmAgent(
@@ -322,7 +334,43 @@ meal_ingredients_agent = LlmAgent(
 )
 
 # ---------------------------------------------------------------------------
-# 7. Orchestrator agent – ROOT for ADK Web
+# 8. Store Finder and Cost Optimizer Agents (Integrated with Maps Tools)
+# ---------------------------------------------------------------------------
+
+meal_store_finder = LlmAgent(
+    name="meal_store_finder",
+    description=(
+        "Helps the user find nearby grocery stores or markets, provides business "
+        "hours, and can offer directions using Google Maps tools."
+    ),
+    model=MODEL_NAME,
+    instruction=STORE_FINDER_INSTRUCTIONS,
+    generate_content_config=ORCH_GEN_CONFIG,
+    # --- Assigning Maps Tools for finding and navigation ---
+    tools=[
+        # Maps Local for finding places, details, and showing on map
+        maps_local.query_places,
+        maps_local.analyze_places,
+        maps_local.show_on_map,
+        # Maps Navigation for getting directions and turn-by-turn guidance
+        maps_navigation.find_directions,
+        maps_navigation.navigate,
+    ],
+)
+
+meal_cost_optimizer = LlmAgent(
+    name="meal_cost_optimizer",
+    description=(
+        "Analyzes a meal plan or shopping list to suggest cost-saving "
+        "substitutions or bulk-buying tips. This agent is accessed in parallel for optimization queries."
+    ),
+    model=MODEL_NAME,
+    instruction=COST_OPTIMIZER_INSTRUCTIONS,
+    generate_content_config=ORCH_GEN_CONFIG,
+)
+
+# ---------------------------------------------------------------------------
+# 9. Orchestrator agent – ROOT for ADK Web
 # ---------------------------------------------------------------------------
 
 root_agent = LlmAgent(
@@ -339,7 +387,13 @@ root_agent = LlmAgent(
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
     # Orchestrator can call both sub-agents
-    sub_agents=[meal_planner_core_agent, meal_profile_agent],
+    sub_agents=[
+        meal_planner_core_agent,
+        meal_profile_agent,
+        meal_ingredients_agent,
+        meal_store_finder,
+        meal_cost_optimizer,
+    ],
     # Tools: semantic memory + dynamic DB
     tools=[
         load_memory,
@@ -349,7 +403,7 @@ root_agent = LlmAgent(
 )
 
 # ---------------------------------------------------------------------------
-# 8. App object for ADK Web
+# 10. App object for ADK Web
 # ---------------------------------------------------------------------------
 
 app = App(
