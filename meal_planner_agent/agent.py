@@ -1,22 +1,45 @@
 """
-Multi-step Meal Planner agents for Google ADK.
+ADK Web app: Multi-step Meal Planner + dynamic SQLite DB tools + session + memory.
 
+Layers:
+- Session: handled by ADK runtime (per chat session).
+- Memory: via built-in `load_memory` tool (semantic across sessions).
+- DB: SQLite (assistant_data.db) with fully dynamic schema:
+      agent can CREATE/ALTER tables and INSERT/UPDATE/SELECT rows,
+      with basic safety guards.
+
+Agents:
 - meal_planner_core_agent:
     Low-level agent that accepts a JSON `meal_request` and returns a JSON meal plan.
-
 - root_agent (meal_planner_agent):
     User-facing orchestrator. Talks to the user, collects all required fields,
-    and only when they are complete delegates to meal_planner_core_agent.
+    delegates to meal_planner_core_agent, and can also use SQLite as structured memory.
 
-Tunable attributes:
-- MODEL_NAME, TEMPERATURE, TOP_P, TOP_K, MAX_OUTPUT_TOKENS
-- SAFETY_SETTINGS using HarmCategory + HarmBlockThreshold
+Tools (plain Python functions; ADK wraps them automatically):
+- inspect_schema: see current tables and columns.
+- execute_sql: run arbitrary SQL (CREATE TABLE, ALTER TABLE, INSERT, UPDATE, SELECT, ...).
+
+App:
+- name: my_agent
+- root_agent: meal_planner_agent
 """
 
 from __future__ import annotations
 
+import os
+import sqlite3
+import json
+from typing import Any, Dict, List, Optional
+
+from dotenv import load_dotenv
+
 from google.adk.agents import LlmAgent
+from google.adk.apps import App
+from google.adk.tools import load_memory
+from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
+
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # 0. Global configuration knobs
@@ -40,6 +63,9 @@ MAX_OUTPUT_TOKENS_ORCH = 1600
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 2.0
 
+# SQLite DB path for dynamic structured memory
+DB_PATH = os.getenv("ASSISTANT_DB_PATH", "assistant_data.db")
+
 # Basic safety settings (use HarmBlockThreshold, NOT SafetyThreshold)
 SAFETY_SETTINGS = [
     genai_types.SafetySetting(
@@ -58,7 +84,154 @@ SAFETY_SETTINGS = [
 
 
 # ---------------------------------------------------------------------------
-# 1. System prompts
+# 1. SQLite helpers (DB layer)
+# ---------------------------------------------------------------------------
+
+def _get_connection() -> sqlite3.Connection:
+    """
+    Open SQLite connection.
+
+    We don't create any fixed tables here.
+    The agent is free to design the schema using execute_sql().
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# ---------------------------------------------------------------------------
+# 2. Dynamic DB tools (plain functions – no decorator)
+# ---------------------------------------------------------------------------
+
+def inspect_schema(tool_context: ToolContext) -> Dict[str, Any]:
+    """
+    Inspect the current SQLite schema: list tables and their columns.
+
+    Returns:
+        {
+          "tables": [
+            {
+              "name": "users",
+              "columns": [
+                {"name": "id", "type": "INTEGER", "notnull": 1, "pk": 1},
+                ...
+              ]
+            },
+            ...
+          ]
+        }
+    """
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+    )
+    tables = [row["name"] for row in cur.fetchall()]
+
+    result: List[Dict[str, Any]] = []
+    for tname in tables:
+        cur.execute(f"PRAGMA table_info({tname});")
+        cols = []
+        for col in cur.fetchall():
+            cols.append(
+                {
+                    "cid": col["cid"],
+                    "name": col["name"],
+                    "type": col["type"],
+                    "notnull": col["notnull"],
+                    "default_value": col["dflt_value"],
+                    "pk": col["pk"],
+                }
+            )
+        result.append({"name": tname, "columns": cols})
+
+    conn.close()
+    return {"tables": result}
+
+
+def execute_sql(
+    tool_context: ToolContext,
+    sql: str,
+    params_json: Optional[str] = None,
+    expect_result: bool = False,
+) -> Dict[str, Any]:
+    """
+    Execute arbitrary SQL against the SQLite DB with basic safety rules.
+
+    Use this tool to:
+    - CREATE TABLE / ALTER TABLE / CREATE INDEX ...
+    - INSERT / UPDATE / DELETE (with WHERE)
+    - SELECT to fetch rows
+
+    Args:
+        sql:
+            The SQL statement to execute. It can contain named parameters like
+            :user_id, :age, :goal, etc.
+        params_json:
+            Optional JSON-encoded dict of parameters, e.g.:
+            '{"age": 25, "weight_kg": 90, "goal": "fat_loss"}'
+        expect_result:
+            True if you expect a result set (e.g. SELECT), False otherwise.
+
+    Safety:
+        - DROP TABLE is blocked.
+        - DELETE without WHERE is blocked.
+
+    Note:
+        - The current ADK user_id is automatically injected into params
+          under the key 'user_id'. You can safely use :user_id in SQL
+          without adding it to params_json.
+    """
+    sql_stripped = sql.strip().lower()
+
+    # Basic safety guardrails
+    if sql_stripped.startswith("drop table"):
+        raise ValueError("DROP TABLE is disabled for safety.")
+    if sql_stripped.startswith("delete") and " where " not in sql_stripped:
+        raise ValueError("DELETE without WHERE is disabled for safety.")
+
+    params: Dict[str, Any] = {}
+    if params_json:
+        try:
+            loaded = json.loads(params_json)
+            if isinstance(loaded, dict):
+                params = loaded
+            else:
+                raise ValueError("params_json must be a JSON object.")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid params_json, not valid JSON: {e}")
+
+    # Inject the current ADK user_id so the agent can use :user_id
+    user_id = getattr(tool_context, "user_id", "user")
+    if "user_id" not in params:
+        params["user_id"] = user_id
+
+    conn = _get_connection()
+    cur = conn.cursor()
+
+    if expect_result:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        conn.close()
+
+        data = [{k: row[k] for k in row.keys()} for row in rows]
+
+        return {
+            "rows": data,
+            "rowcount": len(data),
+        }
+    else:
+        cur.execute(sql, params)
+        affected = cur.rowcount
+        conn.commit()
+        conn.close()
+        return {"rowcount": affected}
+
+
+# ---------------------------------------------------------------------------
+# 3. System prompts for meal planner
 # ---------------------------------------------------------------------------
 
 MEAL_PLANNER_INSTRUCTIONS = """
@@ -165,10 +338,71 @@ Rules:
 - Do not invent specific values (age, weight, calories, etc.) if the user did
   not provide them; instead, ask.
 - Avoid medical claims. You are not a doctor.
+
+DB + memory usage:
+- You have access to:
+  1) Semantic long-term memory via `load_memory`.
+  2) A dynamic SQLite database via `inspect_schema` and `execute_sql`.
+
+- Use the DB as a structured long-term memory, especially when the user says
+  things like "remember my profile", "remember my allergies", or "remember my
+  preferences for future plans".
+
+- Typical tables you may create and use:
+  * user_profiles(user_id TEXT PRIMARY KEY,
+                  age INTEGER,
+                  weight_kg REAL,
+                  height_cm REAL,
+                  gender TEXT,
+                  diet_goal TEXT,
+                  daily_calorie_limit REAL,
+                  country TEXT,
+                  updated_at TEXT)
+  * user_preferences(user_id TEXT,
+                    key TEXT,
+                    value TEXT,
+                    updated_at TEXT,
+                    PRIMARY KEY (user_id, key))
+  * user_allergies(user_id TEXT,
+                   allergy TEXT,
+                   severity TEXT,
+                   updated_at TEXT)
+  * meal_plans(id INTEGER PRIMARY KEY AUTOINCREMENT,
+               user_id TEXT,
+               date TEXT,
+               total_calories REAL,
+               notes TEXT)
+  * meal_plan_items(plan_id INTEGER,
+                    meal_type TEXT,
+                    item TEXT,
+                    calories REAL)
+
+- When you want to STORE stable information (profile, preferences, allergies):
+  1) Call `inspect_schema` to see existing tables/columns.
+  2) If needed, create or extend tables using `execute_sql` and a CREATE TABLE
+     or ALTER TABLE statement.
+  3) Use `execute_sql` with named parameters (e.g. :user_id, :age, :goal) and
+     params_json to INSERT or UPSERT rows.
+  4) Briefly tell the user what you stored or updated.
+
+- When you want to REUSE stored information:
+  1) Use `execute_sql` with SELECT and expect_result=True to read from your
+     tables (e.g. user_profiles, user_preferences).
+  2) Use those values to avoid asking the same questions again and to
+     personalize new meal plans.
+
+- The parameter :user_id is automatically available in `execute_sql`, mapped to
+  the current ADK user. Always include a user_id column in user-specific tables.
+
+Always:
+- Explain important actions briefly to the user (e.g. 'I stored your age, weight,
+  goal, and country in your profile.').
+- Keep answers concise and chat-friendly.
 """
 
+
 # ---------------------------------------------------------------------------
-# 2. Helper: Build GenerateContentConfig for each agent
+# 4. Helper: Build GenerateContentConfig for each agent
 # ---------------------------------------------------------------------------
 
 def build_generate_content_config(
@@ -184,7 +418,7 @@ def build_generate_content_config(
         top_p=TOP_P,
         top_k=TOP_K,
         max_output_tokens=max_tokens,
-        safety_settings=SAFETY_SETTINGS,  # Include safety settings here
+        safety_settings=SAFETY_SETTINGS,
     )
 
 
@@ -198,8 +432,9 @@ ORCH_GEN_CONFIG = build_generate_content_config(
     max_tokens=MAX_OUTPUT_TOKENS_ORCH,
 )
 
+
 # ---------------------------------------------------------------------------
-# 3. Core meal-planning agent (JSON → JSON)
+# 5. Core meal-planning agent (JSON → JSON)
 # ---------------------------------------------------------------------------
 
 meal_planner_core_agent = LlmAgent(
@@ -210,23 +445,38 @@ meal_planner_core_agent = LlmAgent(
     ),
     model=MODEL_NAME,
     instruction=MEAL_PLANNER_INSTRUCTIONS,
-    generate_content_config=CORE_GEN_CONFIG,  # Use generate_content_config
+    generate_content_config=CORE_GEN_CONFIG,
 )
 
+
 # ---------------------------------------------------------------------------
-# 4. Orchestrator agent – ROOT for ADK Web
+# 6. Orchestrator agent – ROOT for ADK Web
 # ---------------------------------------------------------------------------
 
 root_agent = LlmAgent(
     name="meal_planner_agent",
     description=(
         "Conversational meal-planning assistant. Talks to the user, collects "
-        "all fields for `meal_request`, then delegates to "
-        "`meal_planner_core_agent` to generate the final plan."
+        "all fields for `meal_request`, delegates to `meal_planner_core_agent`, "
+        "and can remember user profiles and preferences in a dynamic SQLite DB."
     ),
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
-    generate_content_config=ORCH_GEN_CONFIG,  # Use generate_content_config
-    # Multi-agent: the orchestrator can invoke this sub-agent when ready.
+    generate_content_config=ORCH_GEN_CONFIG,
     sub_agents=[meal_planner_core_agent],
+    tools=[
+        load_memory,
+        inspect_schema,
+        execute_sql,
+    ],
+)
+
+
+# ---------------------------------------------------------------------------
+# 7. App object for ADK Web
+# ---------------------------------------------------------------------------
+
+app = App(
+    name="my_agent",
+    root_agent=root_agent,
 )
