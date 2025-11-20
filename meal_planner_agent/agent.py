@@ -38,6 +38,7 @@ import sqlite3
 import json
 from typing import Any, Dict, List, Optional
 
+from capstone_project.meal_planner_agent import meal_planner_instructions
 from dotenv import load_dotenv
 
 from google.adk.agents import LlmAgent
@@ -46,7 +47,7 @@ from google.adk.tools import load_memory
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
 
-from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS
+from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS, MEAL_PROFILE_INSTRUCTIONS
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
 from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
 
@@ -300,6 +301,23 @@ meal_profile_agent = LlmAgent(
     ),
     model=MODEL_NAME,
     instruction=MEAL_PROFILE_INSTRUCTIONS,
+    generate_content_config=CORE_GEN_CONFIG,
+)
+
+# ---------------------------------------------------------------------------
+# 6.5. Shopping List agent (Meal Plan JSON → Shopping List text) <-- ADDED
+# ---------------------------------------------------------------------------
+
+meal_ingredients_agent = LlmAgent(
+    name="meal_ingredients_agent",
+    description=(
+        "I'm the Shopping List assistant! I take the complete meal plan "
+        "JSON, extract all the ingredients, consolidate them, and generate "
+        "a clean, categorized, and ready-to-use grocery shopping list in "
+        "plain text for the user."
+    ),
+    model=MODEL_NAME,
+    instruction=SHOPPING_AGENT_INSTRUCTIONS,
     generate_content_config=CORE_GEN_CONFIG,
 )
 
