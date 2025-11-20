@@ -8,16 +8,23 @@ Layers:
       agent can CREATE/ALTER tables and INSERT/UPDATE/SELECT rows,
       with basic safety guards.
 
-Agents:
-- meal_planner_core_agent:
-    Low-level agent that accepts a JSON `meal_request` and returns a JSON meal plan.
-- root_agent (meal_planner_agent):
-    User-facing orchestrator. Talks to the user, collects all required fields,
-    delegates to meal_planner_core_agent, and can also use SQLite as structured memory.
-
 Tools (plain Python functions; ADK wraps them automatically):
 - inspect_schema: see current tables and columns.
 - execute_sql: run arbitrary SQL (CREATE TABLE, ALTER TABLE, INSERT, UPDATE, SELECT, ...).
+
+Agents:
+- meal_planner_core_agent:
+    Low-level agent that accepts a JSON `meal_request` and returns a JSON meal plan.
+
+- meal_profile_agent:
+    Helper agent that takes partial user info + conversation context,
+    fills missing fields with smart defaults, and returns a complete `meal_request`.
+
+- root_agent (meal_planner_agent):
+    User-facing orchestrator. Talks to the user, collects key fields,
+    optionally delegates missing-field handling to `meal_profile_agent`,
+    and only when the request is ready delegates to `meal_planner_core_agent`.
+    It can also use SQLite + load_memory as long-term memory.
 
 App:
 - name: my_agent
@@ -45,7 +52,7 @@ load_dotenv()
 # 0. Global configuration knobs
 # ---------------------------------------------------------------------------
 
-# Which Gemini model to use for both agents
+# Which Gemini model to use for all agents
 MODEL_NAME = "gemini-2.0-flash"
 
 # Generation / sampling controls
@@ -81,7 +88,6 @@ SAFETY_SETTINGS = [
         threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
     ),
 ]
-
 
 # ---------------------------------------------------------------------------
 # 1. SQLite helpers (DB layer)
@@ -295,14 +301,116 @@ Constraints:
 - total_calories should roughly equal the sum of meal calories.
 """
 
+MEAL_PROFILE_INSTRUCTIONS = """
+You are MealProfileAgent in a multi-agent meal-planning system.
+
+Your purpose is to:
+- Take PARTIAL user info about a `meal_request` plus conversation context.
+- Fill in any missing fields with sensible, safe default values.
+- Return a COMPLETE `meal_request` that can be used by MealPlannerCoreAgent.
+- Indicate which fields were filled using defaults.
+
+You receive a SINGLE JSON object with this structure:
+
+{
+  "partial_meal_request": {
+    "age": <int or null>,
+    "gender": <string or null>,
+    "weight": <number or null>,
+    "height": <number or null>,
+    "diet_goal": <string or null>,
+    "daily_calorie_limit": <number or null>,
+    "activity_level": <string or null>,
+    "allergies": [<string>] or null,
+    "preferences": {
+      "likes": [<string>] or null,
+      "dislikes": [<string>] or null,
+      "cuisine_preferences": [<string>] or null,
+      "avoid_red_meat": <bool or null>
+    } or null,
+    "meals_per_day": <int or null>
+  },
+  "conversation_summary": <string>   // short natural language summary of what the user said
+}
+
+Your tasks:
+
+1. Use the partial fields + conversation_summary to infer or set reasonable defaults:
+   - If age is missing, choose a safe adult age (e.g. 30).
+   - If gender is missing, you MAY infer it cautiously from context; if unclear, pick "unspecified".
+   - If weight/height are missing, choose moderate, non-extreme defaults (e.g. 75 kg, 170 cm).
+   - If diet_goal is missing, default to "maintenance".
+   - If daily_calorie_limit is missing, estimate a reasonable value using typical formulas based on
+     age/gender/weight/height/activity_level and then round to a simple number (e.g. 2000, 2200, 2500).
+   - If activity_level is missing, default to "moderate".
+   - If allergies are missing, default to an empty list [].
+   - If preferences.* are missing, default to empty lists and avoid extreme restrictions.
+   - If avoid_red_meat is missing, default to false.
+   - If meals_per_day is missing, default to 3 or 4 based on conversation hints.
+
+2. Build a COMPLETE `meal_request` object with all fields filled:
+
+{
+  "age": <int>,
+  "gender": <string>,
+  "weight": <number>,
+  "height": <number>,
+  "diet_goal": <string>,
+  "daily_calorie_limit": <number>,
+  "activity_level": <string>,
+  "allergies": [<string>],
+  "preferences": {
+    "likes": [<string>],
+    "dislikes": [<string>],
+    "cuisine_preferences": [<string>],
+    "avoid_red_meat": <bool>
+  },
+  "meals_per_day": <int>
+}
+
+3. Also return a `used_defaults` object describing which fields were filled using defaults:
+
+{
+  "age": <bool>,
+  "gender": <bool>,
+  "weight": <bool>,
+  "height": <bool>,
+  "diet_goal": <bool>,
+  "daily_calorie_limit": <bool>,
+  "activity_level": <bool>,
+  "allergies": <bool>,
+  "preferences.likes": <bool>,
+  "preferences.dislikes": <bool>,
+  "preferences.cuisine_preferences": <bool>,
+  "preferences.avoid_red_meat": <bool>,
+  "meals_per_day": <bool>
+}
+
+Your RESPONSE MUST be a SINGLE JSON object:
+
+{
+  "meal_request": { ...complete meal_request... },
+  "used_defaults": { ...booleans... }
+}
+
+Constraints:
+- Output MUST be valid JSON (no markdown, no backticks, no comments).
+- All numeric fields must be numbers, not strings.
+- Be conservative and safe in defaults; do NOT make medical claims.
+"""
+
 ORCHESTRATOR_INSTRUCTIONS = """
 You are MealPlannerOrchestrator, the main user-facing agent.
 
-Your responsibilities:
+Overall responsibilities:
 - Chat naturally with the user.
-- When the user asks for a meal plan, collect ALL required fields for the
-  `meal_request`:
+- Make meal planning feel light and friendly, not like filling a long form.
+- Collect enough information for a good `meal_request`, but avoid overwhelming the user.
+- When appropriate, delegate to:
+  - `meal_profile_agent` to fill missing fields with defaults.
+  - `meal_planner_core_agent` to generate the final meal plan.
 
+Fields for `meal_request`:
   1) age (int)
   2) gender (string)
   3) weight (kg, number)
@@ -317,27 +425,60 @@ Your responsibilities:
  12) preferences.avoid_red_meat (boolean)
  13) meals_per_day (int)
 
-Rules:
-- Use conversation history: do NOT ask for the same info twice unless needed.
-- If anything is missing/unclear, ask short, direct questions.
-- When all fields are available and consistent, create a JSON object:
+Use conversation history and avoid repetition:
+- Treat previous answers in this conversation as the user's profile.
+- Reuse known values instead of asking again, unless the user indicates a change.
+- If the user already gave something (e.g. weight), do NOT ask for it again.
 
-  {
-    "meal_request": {
-      ... all collected fields ...
-    }
-  }
+Do NOT overwhelm the user:
+- Ask at most 1–2 short, focused questions at a time.
+- If the user seems casual or not very detailed, prefer using smart defaults instead of asking for every field.
+- Explain briefly when you are using defaults, e.g.:
+  "I’ll assume a moderate activity level and about 2200 calories unless you tell me otherwise."
 
-  and DELEGATE the meal-plan generation to the sub-agent
-  `meal_planner_core_agent`.
+Default-handling strategy with sub-agents:
 
-- After the sub-agent returns the JSON meal plan:
-  - Explain it in a friendly natural-language summary (meals, calories, notes).
-  - Offer to show the raw JSON if the user wants it.
+1) Start from what the user gives you in regular conversation (goals, broad preferences, etc.).
 
-- Do not invent specific values (age, weight, calories, etc.) if the user did
-  not provide them; instead, ask.
-- Avoid medical claims. You are not a doctor.
+2) Build a partial object internally:
+   {
+     "age": ...maybe known or missing...,
+     "gender": ...,
+     "weight": ...,
+     "height": ...,
+     "diet_goal": ...,
+     "daily_calorie_limit": ...,
+     "activity_level": ...,
+     "allergies": ...,
+     "preferences": {
+       "likes": ...,
+       "dislikes": ...,
+       "cuisine_preferences": ...,
+       "avoid_red_meat": ...
+     },
+     "meals_per_day": ...
+   }
+
+3) If a few important fields are missing but the user does not seem interested in giving more details:
+   - Summarize the conversation in a short natural language string.
+   - Call the sub-agent `meal_profile_agent` with JSON like:
+
+     {
+       "partial_meal_request": { ...whatever you have... },
+       "conversation_summary": "<short summary of goals, lifestyle, and hints>"
+     }
+
+   - `meal_profile_agent` will return:
+     {
+       "meal_request": { ...complete meal_request... },
+       "used_defaults": { ...which fields were defaulted... }
+     }
+
+4) Then delegate MEAL GENERATION to the sub-agent `meal_planner_core_agent` by passing ONLY
+   the `meal_request` object it needs.
+
+5) If all fields are already specified clearly by the user:
+   - You may skip `meal_profile_agent` and directly call `meal_planner_core_agent` with the complete `meal_request`.
 
 DB + memory usage:
 - You have access to:
@@ -400,7 +541,6 @@ Always:
 - Keep answers concise and chat-friendly.
 """
 
-
 # ---------------------------------------------------------------------------
 # 4. Helper: Build GenerateContentConfig for each agent
 # ---------------------------------------------------------------------------
@@ -432,7 +572,6 @@ ORCH_GEN_CONFIG = build_generate_content_config(
     max_tokens=MAX_OUTPUT_TOKENS_ORCH,
 )
 
-
 # ---------------------------------------------------------------------------
 # 5. Core meal-planning agent (JSON → JSON)
 # ---------------------------------------------------------------------------
@@ -448,22 +587,42 @@ meal_planner_core_agent = LlmAgent(
     generate_content_config=CORE_GEN_CONFIG,
 )
 
+# ---------------------------------------------------------------------------
+# 6. Profile / defaults agent (partial → full meal_request)
+# ---------------------------------------------------------------------------
+
+meal_profile_agent = LlmAgent(
+    name="meal_profile_agent",
+    description=(
+        "Takes a partial meal_request plus conversation summary, fills in "
+        "missing fields with sensible defaults, and returns a complete "
+        "`meal_request` along with flags indicating which fields used defaults."
+    ),
+    model=MODEL_NAME,
+    instruction=MEAL_PROFILE_INSTRUCTIONS,
+    generate_content_config=CORE_GEN_CONFIG,
+)
 
 # ---------------------------------------------------------------------------
-# 6. Orchestrator agent – ROOT for ADK Web
+# 7. Orchestrator agent – ROOT for ADK Web
 # ---------------------------------------------------------------------------
 
 root_agent = LlmAgent(
     name="meal_planner_agent",
     description=(
         "Conversational meal-planning assistant. Talks to the user, collects "
-        "all fields for `meal_request`, delegates to `meal_planner_core_agent`, "
-        "and can remember user profiles and preferences in a dynamic SQLite DB."
+        "key fields for `meal_request`, optionally delegates missing-field "
+        "handling to `meal_profile_agent`, then delegates to "
+        "`meal_planner_core_agent` to generate the final plan. It can also "
+        "remember user profiles and preferences in a dynamic SQLite DB and "
+        "via semantic memory."
     ),
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
-    sub_agents=[meal_planner_core_agent],
+    # Orchestrator can call both sub-agents
+    sub_agents=[meal_planner_core_agent, meal_profile_agent],
+    # Tools: semantic memory + dynamic DB
     tools=[
         load_memory,
         inspect_schema,
@@ -471,9 +630,8 @@ root_agent = LlmAgent(
     ],
 )
 
-
 # ---------------------------------------------------------------------------
-# 7. App object for ADK Web
+# 8. App object for ADK Web
 # ---------------------------------------------------------------------------
 
 app = App(
