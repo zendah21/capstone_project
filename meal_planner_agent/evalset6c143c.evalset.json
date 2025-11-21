@@ -1,0 +1,1170 @@
+{
+  "eval_set_id": "evalset6c143c",
+  "name": "evalset6c143c",
+  "eval_cases": [
+    {
+      "eval_id": "case5f2175",
+      "conversation": [
+        {
+          "invocation_id": "e-cba22eb1-8293-48f8-929a-99790671af65",
+          "user_content": {
+            "parts": [
+              {
+                "text": "hey"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hi there! Ready to plan some delicious and healthy meals? To get started, I need a little information about you.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719004.157048
+        },
+        {
+          "invocation_id": "e-3f97f29a-980f-4d2a-a045-f19a53c6f347",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want to gain muscles\n\ni am a female, age : 20, weight - 44kg , height is 149.86 cm\n\nactivity level is moderate and no allergies to any food but dont include mushroom in my diet or brocoli and i prefer indian and chinese cuisines"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I've got most of the key info. So you're a 20-year-old female, 44 kg and 149.86 cm tall, looking to gain muscle with a moderate activity level. No allergies, but you dislike mushrooms and broccoli, and prefer Indian and Chinese cuisines.\n\nTo create the best meal plan for you, I still need to know:\n\n1.  How many meals would you like to eat per day?\n2.  What is your daily calorie limit?\n\nOnce I have these details, I can generate your personalized meal plan!\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719008.13375
+        },
+        {
+          "invocation_id": "e-e5fb1ed3-440a-4bff-926e-769d10f7fe24",
+          "user_content": {
+            "parts": [
+              {
+                "text": "1. 4 meals a day and calorie limit u decide but my meals should be indian+chinese"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"day\": 1,\n  \"total_calories\": 1800,\n  \"meals\": [\n    {\n      \"name\": \"Breakfast - Vegetable Upma\",\n      \"description\": \"A savory Indian breakfast dish made with semolina and mixed vegetables.\",\n      \"items\": [\"Upma (semolina, mixed vegetables, spices)\", \"Small bowl of yogurt\"],\n      \"calories\": 350,\n      \"macros\": {\n        \"protein\": 10,\n        \"carbs\": 50,\n        \"fat\": 12\n      },\n      \"time_suggestion\": \"08:00\"\n    },\n    {\n      \"name\": \"Lunch - Chicken Stir-fry with Rice\",\n      \"description\": \"A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\",\n      \"items\": [\"Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic)\", \"Brown rice\"],\n      \"calories\": 500,\n      \"macros\": {\n        \"protein\": 35,\n        \"carbs\": 55,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"12:30\"\n    },\n    {\n      \"name\": \"Snack - Paneer Tikka\",\n      \"description\": \"Marinated and grilled paneer cubes.\",\n      \"items\": [\"Paneer tikka (paneer, yogurt, spices)\"],\n      \"calories\": 300,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 15,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"16:00\"\n    },\n    {\n      \"name\": \"Dinner - Lentil Curry with Naan\",\n      \"description\": \"A hearty and flavorful Indian lentil curry served with naan bread.\",\n      \"items\": [\"Lentil curry (dal, tomatoes, onions, spices)\", \"Naan bread\"],\n      \"calories\": 650,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 80,\n        \"fat\": 25\n      },\n      \"time_suggestion\": \"19:30\"\n    }\n  ],\n  \"notes\": [\n    \"This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\",\n    \"Adjust portion sizes to meet your individual calorie needs.\",\n    \"Ensure adequate hydration throughout the day.\"\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "text": "Okay, I'll use my best judgment for your calorie limit, keeping your muscle-gain goal in mind. Since you like Indian and Chinese food and want 4 meals a day, I'll make sure the plan reflects that.\n\nI'm going to create a complete meal request now.\n"
+                    },
+                    {
+                      "function_call": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "args": {
+                          "agent_name": "meal_profile_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719062.508975
+        }
+      ],
+      "session_input": {
+        "app_name": "meal_planner_agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1763719116.0446813
+    },
+    {
+      "eval_id": "case1b0b45",
+      "conversation": [
+        {
+          "invocation_id": "e-cba22eb1-8293-48f8-929a-99790671af65",
+          "user_content": {
+            "parts": [
+              {
+                "text": "hey"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hi there! Ready to plan some delicious and healthy meals? To get started, I need a little information about you.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719004.157048
+        },
+        {
+          "invocation_id": "e-3f97f29a-980f-4d2a-a045-f19a53c6f347",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want to gain muscles\n\ni am a female, age : 20, weight - 44kg , height is 149.86 cm\n\nactivity level is moderate and no allergies to any food but dont include mushroom in my diet or brocoli and i prefer indian and chinese cuisines"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I've got most of the key info. So you're a 20-year-old female, 44 kg and 149.86 cm tall, looking to gain muscle with a moderate activity level. No allergies, but you dislike mushrooms and broccoli, and prefer Indian and Chinese cuisines.\n\nTo create the best meal plan for you, I still need to know:\n\n1.  How many meals would you like to eat per day?\n2.  What is your daily calorie limit?\n\nOnce I have these details, I can generate your personalized meal plan!\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719008.13375
+        },
+        {
+          "invocation_id": "e-e5fb1ed3-440a-4bff-926e-769d10f7fe24",
+          "user_content": {
+            "parts": [
+              {
+                "text": "1. 4 meals a day and calorie limit u decide but my meals should be indian+chinese"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"day\": 1,\n  \"total_calories\": 1800,\n  \"meals\": [\n    {\n      \"name\": \"Breakfast - Vegetable Upma\",\n      \"description\": \"A savory Indian breakfast dish made with semolina and mixed vegetables.\",\n      \"items\": [\"Upma (semolina, mixed vegetables, spices)\", \"Small bowl of yogurt\"],\n      \"calories\": 350,\n      \"macros\": {\n        \"protein\": 10,\n        \"carbs\": 50,\n        \"fat\": 12\n      },\n      \"time_suggestion\": \"08:00\"\n    },\n    {\n      \"name\": \"Lunch - Chicken Stir-fry with Rice\",\n      \"description\": \"A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\",\n      \"items\": [\"Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic)\", \"Brown rice\"],\n      \"calories\": 500,\n      \"macros\": {\n        \"protein\": 35,\n        \"carbs\": 55,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"12:30\"\n    },\n    {\n      \"name\": \"Snack - Paneer Tikka\",\n      \"description\": \"Marinated and grilled paneer cubes.\",\n      \"items\": [\"Paneer tikka (paneer, yogurt, spices)\"],\n      \"calories\": 300,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 15,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"16:00\"\n    },\n    {\n      \"name\": \"Dinner - Lentil Curry with Naan\",\n      \"description\": \"A hearty and flavorful Indian lentil curry served with naan bread.\",\n      \"items\": [\"Lentil curry (dal, tomatoes, onions, spices)\", \"Naan bread\"],\n      \"calories\": 650,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 80,\n        \"fat\": 25\n      },\n      \"time_suggestion\": \"19:30\"\n    }\n  ],\n  \"notes\": [\n    \"This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\",\n    \"Adjust portion sizes to meet your individual calorie needs.\",\n    \"Ensure adequate hydration throughout the day.\"\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "text": "Okay, I'll use my best judgment for your calorie limit, keeping your muscle-gain goal in mind. Since you like Indian and Chinese food and want 4 meals a day, I'll make sure the plan reflects that.\n\nI'm going to create a complete meal request now.\n"
+                    },
+                    {
+                      "function_call": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "args": {
+                          "agent_name": "meal_profile_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719062.508975
+        }
+      ],
+      "session_input": {
+        "app_name": "meal_planner_agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1763719125.450564
+    },
+    {
+      "eval_id": "case46b2e6",
+      "conversation": [
+        {
+          "invocation_id": "e-cba22eb1-8293-48f8-929a-99790671af65",
+          "user_content": {
+            "parts": [
+              {
+                "text": "hey"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hi there! Ready to plan some delicious and healthy meals? To get started, I need a little information about you.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719004.157048
+        },
+        {
+          "invocation_id": "e-3f97f29a-980f-4d2a-a045-f19a53c6f347",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want to gain muscles\n\ni am a female, age : 20, weight - 44kg , height is 149.86 cm\n\nactivity level is moderate and no allergies to any food but dont include mushroom in my diet or brocoli and i prefer indian and chinese cuisines"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I've got most of the key info. So you're a 20-year-old female, 44 kg and 149.86 cm tall, looking to gain muscle with a moderate activity level. No allergies, but you dislike mushrooms and broccoli, and prefer Indian and Chinese cuisines.\n\nTo create the best meal plan for you, I still need to know:\n\n1.  How many meals would you like to eat per day?\n2.  What is your daily calorie limit?\n\nOnce I have these details, I can generate your personalized meal plan!\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719008.13375
+        },
+        {
+          "invocation_id": "e-e5fb1ed3-440a-4bff-926e-769d10f7fe24",
+          "user_content": {
+            "parts": [
+              {
+                "text": "1. 4 meals a day and calorie limit u decide but my meals should be indian+chinese"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"day\": 1,\n  \"total_calories\": 1800,\n  \"meals\": [\n    {\n      \"name\": \"Breakfast - Vegetable Upma\",\n      \"description\": \"A savory Indian breakfast dish made with semolina and mixed vegetables.\",\n      \"items\": [\"Upma (semolina, mixed vegetables, spices)\", \"Small bowl of yogurt\"],\n      \"calories\": 350,\n      \"macros\": {\n        \"protein\": 10,\n        \"carbs\": 50,\n        \"fat\": 12\n      },\n      \"time_suggestion\": \"08:00\"\n    },\n    {\n      \"name\": \"Lunch - Chicken Stir-fry with Rice\",\n      \"description\": \"A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\",\n      \"items\": [\"Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic)\", \"Brown rice\"],\n      \"calories\": 500,\n      \"macros\": {\n        \"protein\": 35,\n        \"carbs\": 55,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"12:30\"\n    },\n    {\n      \"name\": \"Snack - Paneer Tikka\",\n      \"description\": \"Marinated and grilled paneer cubes.\",\n      \"items\": [\"Paneer tikka (paneer, yogurt, spices)\"],\n      \"calories\": 300,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 15,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"16:00\"\n    },\n    {\n      \"name\": \"Dinner - Lentil Curry with Naan\",\n      \"description\": \"A hearty and flavorful Indian lentil curry served with naan bread.\",\n      \"items\": [\"Lentil curry (dal, tomatoes, onions, spices)\", \"Naan bread\"],\n      \"calories\": 650,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 80,\n        \"fat\": 25\n      },\n      \"time_suggestion\": \"19:30\"\n    }\n  ],\n  \"notes\": [\n    \"This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\",\n    \"Adjust portion sizes to meet your individual calorie needs.\",\n    \"Ensure adequate hydration throughout the day.\"\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "text": "Okay, I'll use my best judgment for your calorie limit, keeping your muscle-gain goal in mind. Since you like Indian and Chinese food and want 4 meals a day, I'll make sure the plan reflects that.\n\nI'm going to create a complete meal request now.\n"
+                    },
+                    {
+                      "function_call": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "args": {
+                          "agent_name": "meal_profile_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719062.508975
+        },
+        {
+          "invocation_id": "e-2080ed26-ae2e-41dc-909f-dcded81d1239",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want ingredients for veg upma"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Okay, I can create a shopping list based on the meal plan you received. Here's a grocery list to make shopping easier:\n\n**Produce**\n*   Mixed vegetables (for Upma and stir-fry): 1 bag of frozen mixed vegetables or fresh equivalents (carrots, peas, beans, etc.)\n*   Tomatoes: 3-4 medium\n*   Onions: 2-3 medium\n*   Ginger: 1 knob\n*   Garlic: 1 bulb\n\n**Meat & Poultry**\n*   Chicken breast: 500g\n\n**Dairy & Refrigerated**\n*   Yogurt: 1 large tub (for Upma and Paneer Tikka)\n*   Paneer: 250g block\n\n**Pantry & Grains**\n*   Semolina (Upma): 500g bag\n*   Brown rice: 1 kg bag\n*   Lentils (Dal): 500g bag\n*   Naan bread: 4-6 pieces\n*   Soy sauce: 1 bottle\n*   Spices (generic): Garam Masala, Turmeric, Chili Powder, Cumin, Coriander (if not already available)\n\n**Notes:**\n\n*   This list assumes you have basic cooking oil, salt, and pepper.\n*   Adjust quantities based on your preferences and serving sizes.\n*   Consider buying pre-made spice blends for Indian dishes to save time.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "args": {
+                          "agent_name": "meal_ingredients_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719162.376984
+        }
+      ],
+      "session_input": {
+        "app_name": "meal_planner_agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1763719189.3833888
+    },
+    {
+      "eval_id": "caseb67dd3",
+      "conversation": [
+        {
+          "invocation_id": "e-cba22eb1-8293-48f8-929a-99790671af65",
+          "user_content": {
+            "parts": [
+              {
+                "text": "hey"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hi there! Ready to plan some delicious and healthy meals? To get started, I need a little information about you.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719004.157048
+        },
+        {
+          "invocation_id": "e-3f97f29a-980f-4d2a-a045-f19a53c6f347",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want to gain muscles\n\ni am a female, age : 20, weight - 44kg , height is 149.86 cm\n\nactivity level is moderate and no allergies to any food but dont include mushroom in my diet or brocoli and i prefer indian and chinese cuisines"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I've got most of the key info. So you're a 20-year-old female, 44 kg and 149.86 cm tall, looking to gain muscle with a moderate activity level. No allergies, but you dislike mushrooms and broccoli, and prefer Indian and Chinese cuisines.\n\nTo create the best meal plan for you, I still need to know:\n\n1.  How many meals would you like to eat per day?\n2.  What is your daily calorie limit?\n\nOnce I have these details, I can generate your personalized meal plan!\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719008.13375
+        },
+        {
+          "invocation_id": "e-e5fb1ed3-440a-4bff-926e-769d10f7fe24",
+          "user_content": {
+            "parts": [
+              {
+                "text": "1. 4 meals a day and calorie limit u decide but my meals should be indian+chinese"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"day\": 1,\n  \"total_calories\": 1800,\n  \"meals\": [\n    {\n      \"name\": \"Breakfast - Vegetable Upma\",\n      \"description\": \"A savory Indian breakfast dish made with semolina and mixed vegetables.\",\n      \"items\": [\"Upma (semolina, mixed vegetables, spices)\", \"Small bowl of yogurt\"],\n      \"calories\": 350,\n      \"macros\": {\n        \"protein\": 10,\n        \"carbs\": 50,\n        \"fat\": 12\n      },\n      \"time_suggestion\": \"08:00\"\n    },\n    {\n      \"name\": \"Lunch - Chicken Stir-fry with Rice\",\n      \"description\": \"A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\",\n      \"items\": [\"Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic)\", \"Brown rice\"],\n      \"calories\": 500,\n      \"macros\": {\n        \"protein\": 35,\n        \"carbs\": 55,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"12:30\"\n    },\n    {\n      \"name\": \"Snack - Paneer Tikka\",\n      \"description\": \"Marinated and grilled paneer cubes.\",\n      \"items\": [\"Paneer tikka (paneer, yogurt, spices)\"],\n      \"calories\": 300,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 15,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"16:00\"\n    },\n    {\n      \"name\": \"Dinner - Lentil Curry with Naan\",\n      \"description\": \"A hearty and flavorful Indian lentil curry served with naan bread.\",\n      \"items\": [\"Lentil curry (dal, tomatoes, onions, spices)\", \"Naan bread\"],\n      \"calories\": 650,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 80,\n        \"fat\": 25\n      },\n      \"time_suggestion\": \"19:30\"\n    }\n  ],\n  \"notes\": [\n    \"This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\",\n    \"Adjust portion sizes to meet your individual calorie needs.\",\n    \"Ensure adequate hydration throughout the day.\"\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "text": "Okay, I'll use my best judgment for your calorie limit, keeping your muscle-gain goal in mind. Since you like Indian and Chinese food and want 4 meals a day, I'll make sure the plan reflects that.\n\nI'm going to create a complete meal request now.\n"
+                    },
+                    {
+                      "function_call": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "args": {
+                          "agent_name": "meal_profile_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719062.508975
+        },
+        {
+          "invocation_id": "e-2080ed26-ae2e-41dc-909f-dcded81d1239",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want ingredients for veg upma"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Okay, I can create a shopping list based on the meal plan you received. Here's a grocery list to make shopping easier:\n\n**Produce**\n*   Mixed vegetables (for Upma and stir-fry): 1 bag of frozen mixed vegetables or fresh equivalents (carrots, peas, beans, etc.)\n*   Tomatoes: 3-4 medium\n*   Onions: 2-3 medium\n*   Ginger: 1 knob\n*   Garlic: 1 bulb\n\n**Meat & Poultry**\n*   Chicken breast: 500g\n\n**Dairy & Refrigerated**\n*   Yogurt: 1 large tub (for Upma and Paneer Tikka)\n*   Paneer: 250g block\n\n**Pantry & Grains**\n*   Semolina (Upma): 500g bag\n*   Brown rice: 1 kg bag\n*   Lentils (Dal): 500g bag\n*   Naan bread: 4-6 pieces\n*   Soy sauce: 1 bottle\n*   Spices (generic): Garam Masala, Turmeric, Chili Powder, Cumin, Coriander (if not already available)\n\n**Notes:**\n\n*   This list assumes you have basic cooking oil, salt, and pepper.\n*   Adjust quantities based on your preferences and serving sizes.\n*   Consider buying pre-made spice blends for Indian dishes to save time.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "args": {
+                          "agent_name": "meal_ingredients_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719162.376984
+        },
+        {
+          "invocation_id": "e-008c3d71-9758-4e53-a189-0707a56483b0",
+          "user_content": {
+            "parts": [
+              {
+                "text": "give me whole meal plan witjout json"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Okay, here's the meal plan in a human-readable format:\n\n**Day 1** (Total Calories: Approximately 1800)\n\n*   **Breakfast (8:00 AM): Vegetable Upma (350 calories)**\n    *   Description: A savory Indian breakfast dish made with semolina and mixed vegetables.\n    *   Ingredients: Upma (semolina, mixed vegetables, spices), Small bowl of yogurt\n*   **Lunch (12:30 PM): Chicken Stir-fry with Rice (500 calories)**\n    *   Description: A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\n    *   Ingredients: Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic), Brown rice\n*   **Snack (4:00 PM): Paneer Tikka (300 calories)**\n    *   Description: Marinated and grilled paneer cubes.\n    *   Ingredients: Paneer tikka (paneer, yogurt, spices)\n*   **Dinner (7:30 PM): Lentil Curry with Naan (650 calories)**\n    *   Description: A hearty and flavorful Indian lentil curry served with naan bread.\n    *   Ingredients: Lentil curry (dal, tomatoes, onions, spices), Naan bread\n\n**Notes:**\n\n*   This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\n*   Adjust portion sizes to meet your individual calorie needs.\n*   Ensure adequate hydration throughout the day.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719203.159291
+        }
+      ],
+      "session_input": {
+        "app_name": "meal_planner_agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1763719225.3533738
+    },
+    {
+      "eval_id": "casebdb602",
+      "conversation": [
+        {
+          "invocation_id": "e-cba22eb1-8293-48f8-929a-99790671af65",
+          "user_content": {
+            "parts": [
+              {
+                "text": "hey"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Hi there! Ready to plan some delicious and healthy meals? To get started, I need a little information about you.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719004.157048
+        },
+        {
+          "invocation_id": "e-3f97f29a-980f-4d2a-a045-f19a53c6f347",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want to gain muscles\n\ni am a female, age : 20, weight - 44kg , height is 149.86 cm\n\nactivity level is moderate and no allergies to any food but dont include mushroom in my diet or brocoli and i prefer indian and chinese cuisines"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Great! I've got most of the key info. So you're a 20-year-old female, 44 kg and 149.86 cm tall, looking to gain muscle with a moderate activity level. No allergies, but you dislike mushrooms and broccoli, and prefer Indian and Chinese cuisines.\n\nTo create the best meal plan for you, I still need to know:\n\n1.  How many meals would you like to eat per day?\n2.  What is your daily calorie limit?\n\nOnce I have these details, I can generate your personalized meal plan!\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719008.13375
+        },
+        {
+          "invocation_id": "e-e5fb1ed3-440a-4bff-926e-769d10f7fe24",
+          "user_content": {
+            "parts": [
+              {
+                "text": "1. 4 meals a day and calorie limit u decide but my meals should be indian+chinese"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"day\": 1,\n  \"total_calories\": 1800,\n  \"meals\": [\n    {\n      \"name\": \"Breakfast - Vegetable Upma\",\n      \"description\": \"A savory Indian breakfast dish made with semolina and mixed vegetables.\",\n      \"items\": [\"Upma (semolina, mixed vegetables, spices)\", \"Small bowl of yogurt\"],\n      \"calories\": 350,\n      \"macros\": {\n        \"protein\": 10,\n        \"carbs\": 50,\n        \"fat\": 12\n      },\n      \"time_suggestion\": \"08:00\"\n    },\n    {\n      \"name\": \"Lunch - Chicken Stir-fry with Rice\",\n      \"description\": \"A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\",\n      \"items\": [\"Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic)\", \"Brown rice\"],\n      \"calories\": 500,\n      \"macros\": {\n        \"protein\": 35,\n        \"carbs\": 55,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"12:30\"\n    },\n    {\n      \"name\": \"Snack - Paneer Tikka\",\n      \"description\": \"Marinated and grilled paneer cubes.\",\n      \"items\": [\"Paneer tikka (paneer, yogurt, spices)\"],\n      \"calories\": 300,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 15,\n        \"fat\": 15\n      },\n      \"time_suggestion\": \"16:00\"\n    },\n    {\n      \"name\": \"Dinner - Lentil Curry with Naan\",\n      \"description\": \"A hearty and flavorful Indian lentil curry served with naan bread.\",\n      \"items\": [\"Lentil curry (dal, tomatoes, onions, spices)\", \"Naan bread\"],\n      \"calories\": 650,\n      \"macros\": {\n        \"protein\": 25,\n        \"carbs\": 80,\n        \"fat\": 25\n      },\n      \"time_suggestion\": \"19:30\"\n    }\n  ],\n  \"notes\": [\n    \"This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\",\n    \"Adjust portion sizes to meet your individual calorie needs.\",\n    \"Ensure adequate hydration throughout the day.\"\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "text": "Okay, I'll use my best judgment for your calorie limit, keeping your muscle-gain goal in mind. Since you like Indian and Chinese food and want 4 meals a day, I'll make sure the plan reflects that.\n\nI'm going to create a complete meal request now.\n"
+                    },
+                    {
+                      "function_call": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "args": {
+                          "agent_name": "meal_profile_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-aee46265-bc1b-40f1-aef4-2ec7d9bc1efc",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_profile_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4b4d2651-c5c0-4a3d-ad7c-37508af2dc77",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "args": {
+                          "agent_name": "meal_planner_core_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-4904e150-eb5c-49d7-a695-25e82a2cb3c9",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719062.508975
+        },
+        {
+          "invocation_id": "e-2080ed26-ae2e-41dc-909f-dcded81d1239",
+          "user_content": {
+            "parts": [
+              {
+                "text": "i want ingredients for veg upma"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Okay, I can create a shopping list based on the meal plan you received. Here's a grocery list to make shopping easier:\n\n**Produce**\n*   Mixed vegetables (for Upma and stir-fry): 1 bag of frozen mixed vegetables or fresh equivalents (carrots, peas, beans, etc.)\n*   Tomatoes: 3-4 medium\n*   Onions: 2-3 medium\n*   Ginger: 1 knob\n*   Garlic: 1 bulb\n\n**Meat & Poultry**\n*   Chicken breast: 500g\n\n**Dairy & Refrigerated**\n*   Yogurt: 1 large tub (for Upma and Paneer Tikka)\n*   Paneer: 250g block\n\n**Pantry & Grains**\n*   Semolina (Upma): 500g bag\n*   Brown rice: 1 kg bag\n*   Lentils (Dal): 500g bag\n*   Naan bread: 4-6 pieces\n*   Soy sauce: 1 bottle\n*   Spices (generic): Garam Masala, Turmeric, Chili Powder, Cumin, Coriander (if not already available)\n\n**Notes:**\n\n*   This list assumes you have basic cooking oil, salt, and pepper.\n*   Adjust quantities based on your preferences and serving sizes.\n*   Consider buying pre-made spice blends for Indian dishes to save time.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "invocation_events": [
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_call": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "args": {
+                          "agent_name": "meal_ingredients_agent"
+                        },
+                        "name": "transfer_to_agent"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                }
+              },
+              {
+                "author": "meal_planner_core_agent",
+                "content": {
+                  "parts": [
+                    {
+                      "function_response": {
+                        "id": "adk-74926068-7c3d-457d-8515-30f6c19a872e",
+                        "name": "transfer_to_agent",
+                        "response": {
+                          "result": null
+                        }
+                      }
+                    }
+                  ],
+                  "role": "user"
+                }
+              }
+            ]
+          },
+          "creation_timestamp": 1763719162.376984
+        },
+        {
+          "invocation_id": "e-008c3d71-9758-4e53-a189-0707a56483b0",
+          "user_content": {
+            "parts": [
+              {
+                "text": "give me whole meal plan witjout json"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Okay, here's the meal plan in a human-readable format:\n\n**Day 1** (Total Calories: Approximately 1800)\n\n*   **Breakfast (8:00 AM): Vegetable Upma (350 calories)**\n    *   Description: A savory Indian breakfast dish made with semolina and mixed vegetables.\n    *   Ingredients: Upma (semolina, mixed vegetables, spices), Small bowl of yogurt\n*   **Lunch (12:30 PM): Chicken Stir-fry with Rice (500 calories)**\n    *   Description: A quick and easy Chinese-inspired stir-fry with chicken and vegetables served over rice.\n    *   Ingredients: Chicken stir-fry (chicken, mixed vegetables, soy sauce, ginger, garlic), Brown rice\n*   **Snack (4:00 PM): Paneer Tikka (300 calories)**\n    *   Description: Marinated and grilled paneer cubes.\n    *   Ingredients: Paneer tikka (paneer, yogurt, spices)\n*   **Dinner (7:30 PM): Lentil Curry with Naan (650 calories)**\n    *   Description: A hearty and flavorful Indian lentil curry served with naan bread.\n    *   Ingredients: Lentil curry (dal, tomatoes, onions, spices), Naan bread\n\n**Notes:**\n\n*   This meal plan provides approximately 1800 calories, suitable for muscle gain for a moderately active 20-year-old female weighing 44kg and 149.86cm tall.\n*   Adjust portion sizes to meet your individual calorie needs.\n*   Ensure adequate hydration throughout the day.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719203.159291
+        },
+        {
+          "invocation_id": "e-e8c64bb3-dd2d-4a0f-a37d-6f9bccf09d6a",
+          "user_content": {
+            "parts": [
+              {
+                "text": "never return in json anything ok"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "Understood. I will avoid returning JSON format in the future.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719234.966298
+        },
+        {
+          "invocation_id": "e-d4dd1409-e561-49e8-b188-62f316320f01",
+          "user_content": {
+            "parts": [
+              {
+                "text": "thank u"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "You're welcome! Is there anything else I can help you with regarding this meal plan or generating a shopping list?\n"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1763719243.103345
+        }
+      ],
+      "session_input": {
+        "app_name": "meal_planner_agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1763719246.7994308
+    }
+  ],
+  "creation_timestamp": 1763719108.387573
+}

@@ -311,11 +311,13 @@ meal_profile_agent = LlmAgent(
 meal_ingredients_agent = LlmAgent(
     name="meal_ingredients_agent",
     description=(
-        "I'm the Shopping List assistant! I take the complete meal plan "
-        "JSON, extract all the ingredients, consolidate them, and generate "
-        "a clean, categorized, and ready-to-use grocery shopping list in "
-        "plain text for the user."
+    "I'm the Meal Plan Core assistant! I take the complete `meal_request` JSON "
+    "and generate a fully structured daily meal plan. I return all meals, ingredients, "
+    "and calories in clear, friendly, chatbot-style phrasing — organized, easy to read, "
+    "and ready for the orchestrator to convert into a natural conversational response "
+    "for the user."
     ),
+
     model=MODEL_NAME,
     instruction=SHOPPING_AGENT_INSTRUCTIONS,
     generate_content_config=CORE_GEN_CONFIG,
