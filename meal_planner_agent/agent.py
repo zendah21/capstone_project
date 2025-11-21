@@ -33,23 +33,13 @@ App:
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
-import json
-
-#adk tools for maps
-from google.adk.tools import maps_local
-from google.adk.tools import maps_navigation
-
-
 from typing import Any, Dict, List, Optional
 
-from capstone_project.meal_planner_agent.cost_optimizer_instructions import COST_OPTIMIZER_INSTRUCTIONS
-from capstone_project.meal_planner_agent.store_finder_instructions import STORE_FINDER_INSTRUCTIONS
-from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS, MEAL_PROFILE_INSTRUCTIONS
-from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
-from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
 from dotenv import load_dotenv
+import os
 
 from google.adk.agents import LlmAgent
 from google.adk.apps import App
@@ -57,9 +47,7 @@ from google.adk.tools import load_memory
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
 
-from capstone_project.meal_planner_agent.cost_optimizer_instructions import COST_OPTIMIZER_INSTRUCTIONS
-from capstone_project.meal_planner_agent.store_finder_instructions import STORE_FINDER_INSTRUCTIONS
-from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS, MEAL_PROFILE_INSTRUCTIONS
+from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
 from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
 
@@ -312,7 +300,7 @@ meal_profile_agent = LlmAgent(
         "`meal_request` along with flags indicating which fields used defaults."
     ),
     model=MODEL_NAME,
-    instruction=MEAL_PROFILE_INSTRUCTIONS,
+    instruction=MEAL_PLANNER_INSTRUCTIONS,
     generate_content_config=CORE_GEN_CONFIG,
 )
 
@@ -333,44 +321,9 @@ meal_ingredients_agent = LlmAgent(
     generate_content_config=CORE_GEN_CONFIG,
 )
 
-# ---------------------------------------------------------------------------
-# 8. Store Finder and Cost Optimizer Agents (Integrated with Maps Tools)
-# ---------------------------------------------------------------------------
-
-meal_store_finder = LlmAgent(
-    name="meal_store_finder",
-    description=(
-        "Helps the user find nearby grocery stores or markets, provides business "
-        "hours, and can offer directions using Google Maps tools."
-    ),
-    model=MODEL_NAME,
-    instruction=STORE_FINDER_INSTRUCTIONS,
-    generate_content_config=ORCH_GEN_CONFIG,
-    # --- Assigning Maps Tools for finding and navigation ---
-    tools=[
-        # Maps Local for finding places, details, and showing on map
-        maps_local.query_places,
-        maps_local.analyze_places,
-        maps_local.show_on_map,
-        # Maps Navigation for getting directions and turn-by-turn guidance
-        maps_navigation.find_directions,
-        maps_navigation.navigate,
-    ],
-)
-
-meal_cost_optimizer = LlmAgent(
-    name="meal_cost_optimizer",
-    description=(
-        "Analyzes a meal plan or shopping list to suggest cost-saving "
-        "substitutions or bulk-buying tips. This agent is accessed in parallel for optimization queries."
-    ),
-    model=MODEL_NAME,
-    instruction=COST_OPTIMIZER_INSTRUCTIONS,
-    generate_content_config=ORCH_GEN_CONFIG,
-)
 
 # ---------------------------------------------------------------------------
-# 9. Orchestrator agent – ROOT for ADK Web
+# 8. Orchestrator agent – ROOT for ADK Web
 # ---------------------------------------------------------------------------
 
 root_agent = LlmAgent(
@@ -379,34 +332,24 @@ root_agent = LlmAgent(
         "Conversational meal-planning assistant. Talks to the user, collects "
         "key fields for `meal_request`, optionally delegates missing-field "
         "handling to `meal_profile_agent`, then delegates to "
-        "`meal_planner_core_agent` to generate the final plan. It can also "
+        "`meal_planner_core_agent` to generate the final plan. **It can also "
+        "use `meal_ingredients_agent` to generate a shopping list.** It can also "
         "remember user profiles and preferences in a dynamic SQLite DB and "
         "via semantic memory."
     ),
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
-    # Orchestrator can call both sub-agents
-    sub_agents=[
-        meal_planner_core_agent,
-        meal_profile_agent,
-        meal_ingredients_agent,
-        meal_store_finder,
-        meal_cost_optimizer,
-    ],
+    # Orchestrator can call sub-agents
+    sub_agents=[meal_planner_core_agent, meal_profile_agent, meal_ingredients_agent], # <--- ADDED meal_ingredients_agent
     # Tools: semantic memory + dynamic DB
-    tools=[
-        load_memory,
-        inspect_schema,
-        execute_sql,
-    ],
 )
 
 # ---------------------------------------------------------------------------
-# 10. App object for ADK Web
+# 9. App object for ADK Web
 # ---------------------------------------------------------------------------
 
 app = App(
-    name="my_agent",
+    name="meal_planner_agent",
     root_agent=root_agent,
 )
