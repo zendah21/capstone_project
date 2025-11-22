@@ -47,52 +47,18 @@ from google.adk.tools import load_memory
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
 
-from meal_planner_agent.meal_planner_instructions import MEAL_PLANNER_INSTRUCTIONS
+from meal_planner_agent.config import MODEL_NAME,ORCH_GEN_CONFIG
+
+from meal_planner_agent.meal_planner_instructions import meal_planner_core_agent
+from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent
+from meal_planner_agent.meal_profile_instructions import meal_profile_agent
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
-from meal_planner_agent.shopping_list_instructions import SHOPPING_AGENT_INSTRUCTIONS
 
 load_dotenv()
-
-# ---------------------------------------------------------------------------
-# 0. Global configuration knobs
-# ---------------------------------------------------------------------------
-
-# Which Gemini model to use for all agents
-MODEL_NAME = "gemini-2.0-flash"
-
-# Generation / sampling controls
-TEMPERATURE_CORE = 0.35        # more deterministic, for strict JSON
-TEMPERATURE_ORCH = 0.6         # a bit more chatty for the orchestrator
-
-TOP_P = 0.9
-TOP_K = 40
-
-# Hard cap on tokens the model can output for one response
-MAX_OUTPUT_TOKENS_CORE = 1200
-MAX_OUTPUT_TOKENS_ORCH = 1600
-
-# (You can use these constants in any external Runner / CLI wrapper if you want.)
-MAX_RETRIES = 3
-RETRY_BACKOFF_SECONDS = 2.0
 
 # SQLite DB path for dynamic structured memory
 DB_PATH = os.getenv("ASSISTANT_DB_PATH", "assistant_data.db")
 
-# Basic safety settings (use HarmBlockThreshold, NOT SafetyThreshold)
-SAFETY_SETTINGS = [
-    genai_types.SafetySetting(
-        category=genai_types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    ),
-    genai_types.SafetySetting(
-        category=genai_types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    ),
-    genai_types.SafetySetting(
-        category=genai_types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold=genai_types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    ),
-]
 
 # ---------------------------------------------------------------------------
 # 1. SQLite helpers (DB layer)
@@ -242,84 +208,7 @@ def execute_sql(
 
 
 
-# ---------------------------------------------------------------------------
-# 4. Helper: Build GenerateContentConfig for each agent
-# ---------------------------------------------------------------------------
 
-def build_generate_content_config(
-    temperature: float,
-    max_tokens: int,
-) -> genai_types.GenerateContentConfig:
-    """
-    Construct a GenerateContentConfig with generation parameters and safety settings.
-    This is the CORRECT way to pass these settings to LlmAgent in Google ADK.
-    """
-    return genai_types.GenerateContentConfig(
-        temperature=temperature,
-        top_p=TOP_P,
-        top_k=TOP_K,
-        max_output_tokens=max_tokens,
-        safety_settings=SAFETY_SETTINGS,
-    )
-
-
-CORE_GEN_CONFIG = build_generate_content_config(
-    temperature=TEMPERATURE_CORE,
-    max_tokens=MAX_OUTPUT_TOKENS_CORE,
-)
-
-ORCH_GEN_CONFIG = build_generate_content_config(
-    temperature=TEMPERATURE_ORCH,
-    max_tokens=MAX_OUTPUT_TOKENS_ORCH,
-)
-
-# ---------------------------------------------------------------------------
-# 5. Core meal-planning agent (JSON → JSON)
-# ---------------------------------------------------------------------------
-
-meal_planner_core_agent = LlmAgent(
-    name="meal_planner_core_agent",
-    description=(
-        "Receives a `meal_request` JSON and returns a structured daily "
-        "meal plan as JSON."
-    ),
-    model=MODEL_NAME,
-    instruction=MEAL_PLANNER_INSTRUCTIONS,
-    generate_content_config=CORE_GEN_CONFIG,
-)
-
-# ---------------------------------------------------------------------------
-# 6. Profile / defaults agent (partial → full meal_request)
-# ---------------------------------------------------------------------------
-
-meal_profile_agent = LlmAgent(
-    name="meal_profile_agent",
-    description=(
-        "Takes a partial meal_request plus conversation summary, fills in "
-        "missing fields with sensible defaults, and returns a complete "
-        "`meal_request` along with flags indicating which fields used defaults."
-    ),
-    model=MODEL_NAME,
-    instruction=MEAL_PLANNER_INSTRUCTIONS,
-    generate_content_config=CORE_GEN_CONFIG,
-)
-
-# ---------------------------------------------------------------------------
-# 7. Shopping List agent (Meal Plan JSON → Shopping List text) <-- ADDED
-# ---------------------------------------------------------------------------
-
-meal_ingredients_agent = LlmAgent(
-    name="meal_ingredients_agent",
-    description=(
-        "I'm the Shopping List assistant! I take the complete meal plan "
-        "JSON, extract all the ingredients, consolidate them, and generate "
-        "a clean, categorized, and ready-to-use grocery shopping list in "
-        "plain text for the user."
-    ),
-    model=MODEL_NAME,
-    instruction=SHOPPING_AGENT_INSTRUCTIONS,
-    generate_content_config=CORE_GEN_CONFIG,
-)
 
 
 # ---------------------------------------------------------------------------

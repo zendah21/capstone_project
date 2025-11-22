@@ -1,3 +1,11 @@
+from google.adk.agents import LlmAgent
+from google.adk.apps import App
+from google.adk.tools import load_memory
+from google.adk.tools.tool_context import ToolContext
+from google.genai import types as genai_types
+
+from meal_planner_agent.config import CORE_GEN_CONFIG,MODEL_NAME
+
 SHOPPING_AGENT_INSTRUCTIONS ="""
 You are MealIngredientsAgent (the Shopping Agent) in a multi-agent system.
 
@@ -58,3 +66,16 @@ Pantry & Grains
 Olive`
 
 """
+
+meal_ingredients_agent = LlmAgent(
+    name="meal_ingredients_agent",
+    description=(
+        "I'm the Shopping List assistant! I take the complete meal plan "
+        "JSON, extract all the ingredients, consolidate them, and generate "
+        "a clean, categorized, and ready-to-use grocery shopping list in "
+        "plain text for the user."
+    ),
+    model=MODEL_NAME,
+    instruction=SHOPPING_AGENT_INSTRUCTIONS,
+    generate_content_config=CORE_GEN_CONFIG,
+)
