@@ -52,6 +52,7 @@ from meal_planner_agent.config import MODEL_NAME,ORCH_GEN_CONFIG
 from meal_planner_agent.meal_planner_instructions import meal_planner_core_agent
 from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent
 from meal_planner_agent.meal_profile_instructions import meal_profile_agent
+from meal_planner_agent.store_finder_agent import store_finder_agent
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
 
 load_dotenv()
@@ -230,8 +231,8 @@ root_agent = LlmAgent(
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
     # Orchestrator can call sub-agents
-    sub_agents=[meal_planner_core_agent, meal_profile_agent, meal_ingredients_agent], # <--- ADDED meal_ingredients_agent
-    # Tools: semantic memory + dynamic DB
+    sub_agents=[meal_planner_core_agent, meal_profile_agent, meal_ingredients_agent,store_finder_agent], # <--- ADDED meal_ingredients_agent
+    tools=[load_memory, inspect_schema, execute_sql]
 )
 
 # ---------------------------------------------------------------------------
