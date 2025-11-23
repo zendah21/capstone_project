@@ -225,8 +225,9 @@ root_agent = LlmAgent(
         "`meal_planner_core_agent` to generate the final plan. **It can also "
         "use `meal_ingredients_agent` to generate a shopping list.** It can also "
         "remember user profiles and preferences in a dynamic SQLite DB and "
-        "via semantic memory."
-    ),
+        "via semantic memory and Always convert any structured output (JSON, dictionaries, tool results) into"
+        "natural language (paragraphs, bullet lists, tables) BEFORE replying."),
+    
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,

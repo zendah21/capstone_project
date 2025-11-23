@@ -65,6 +65,7 @@ You MUST respond ONLY with a JSON object that matches the MealPlanOutput schema:
   "meals": [ ... MealEntry objects ... ],
   "notes": [<string>]
 }
+
 """
 
 meal_planner_core_agent = LlmAgent(
@@ -72,6 +73,23 @@ meal_planner_core_agent = LlmAgent(
     description=(
         "Core planner. Takes a `meal_request` JSON and returns a structured daily "
         "meal plan JSON that matches the MealPlanOutput schema."
+        """PROFILE AGENT RESPONSE HANDLING RULE:
+            The meal_profile_agent returns JSON internally.
+            You MUST NOT show this JSON to the user.
+
+            You must:
+            - Extract the meaning internally
+            - Summarize it in natural language
+            - NEVER display the actual JSON structure, even partially
+            - NEVER quote keys, brackets, or schema fields
+
+            Example of correct behavior:
+            "Great! I filled in the remaining details for your meal profile. You're all set!"
+
+            Example of forbidden behavior:
+            { "meal_request": ... }    ← NEVER ALLOWED
+        """
+
     ),
     model=MODEL_NAME,
     instruction=MEAL_PLANNER_INSTRUCTIONS,
