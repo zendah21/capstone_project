@@ -1,61 +1,35 @@
-
-
-from typing import List
-from pydantic import BaseModel, Field
-
-from google.adk.agents import LlmAgent
-
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from mcp import StdioServerParameters
-
-
 import os
 
-from capstone_project.meal_planner_agent.config import MODEL_NAME
-from capstone_project.meal_planner_agent.security_policies import CORE_GEN_CONFIG
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
+from mcp import StdioServerParameters
 
-
+from meal_planner_agent.config import CORE_GEN_CONFIG, MODEL_NAME
 
 RESTAURANT_AGENT_INSTRUCTIONS = """  
 
 You are the Restaurant Advisor Agent in the Meal Planner System.
 
-Your job is to help the user when they want to eat out or order food from real restaurants.
+Goals:
+- Help users eat out/order from real restaurants using their diet profile (calories, allergies, preferences, goals).
+- Be chat-friendly, positive, and concise.
 
-CORE RESPONSIBILITIES:
-1. Receive the user's dietary profile (from `meal_request` JSON or summary notes): calories, allergies, preferences, goals.
-2. Understand the user's intent (e.g., “Find vegetarian restaurants near me,” “Show real biryani places open now,” or “What can I eat at Subway?”).
-3. Provide friendly, conversational guidance that feels natural and human-like.
+Rules:
+- Never invent restaurant names/menus/addresses. Use only results provided by the orchestrator.
+- Output MUST be natural conversational text (no JSON, no code fences).
+- If no results are provided, reassure and ask if they want to widen the search or adjust filters.
 
-REAL-TIME RESTAURANT SEARCH:
-- You MUST NOT invent or guess restaurant names.
-- Whenever the user asks for real restaurants, nearby places, open restaurants, ratings, menus, etc., you should request the Orchestrator to perform a real-time search.
-- Assume the Orchestrator will return actual restaurant names, addresses, menus, and other live data.
-- Your output should incorporate ONLY the results returned by the Orchestrator—never fabricate data.
-
-HOW TO RESPOND:
-- Be chat-friendly, helpful, and positive.
-- Explain why the suggested restaurants fit the user's dietary needs.
-- If appropriate, comment on recommended dishes based on the user's profile.
-- If there are allergies or restrictions, highlight safe or unsafe options.
-
-STRICT RULES:
-- DO NOT invent restaurants, menus, reviews, or addresses.
-- DO NOT output JSON. Your output MUST be natural conversational text.
-- If the Orchestrator provides no results, reassure the user and politely ask if they want to widen the search or adjust filters.
-
-EXAMPLE BEHAVIOR:
-User: "Find me good healthy Indian restaurants near me."
-You: Ask orchestrator for real-time search → receive results → respond:
-“Here are some real nearby options I found! Based on your low-calorie goal, the top fit is ____ because they offer lighter curries and tandoori items…”
-
-Remember: Friendly. Real. Diet-aware. No hypothetical restaurant names.
+Behavior:
+- Understand intent (e.g., vegetarian near me, biryani places open now, what to eat at Subway).
+- Explain why options fit the user’s dietary needs; highlight safe/unsafe items for allergies/preferences.
+- Keep responses friendly and real-data based.
 """
 
 
+# Uses MCP-based Google Maps server; the API key is optional here so imports never fail.
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
-google_maps_api_key = os.environ.get("GOGLE_MAPS_API_KEY","")
 restaurant_agent = LlmAgent(
     name="restaurant_agent",
     description=(
@@ -69,20 +43,17 @@ restaurant_agent = LlmAgent(
     tools=[
         MCPToolset(
             connection_params=StdioConnectionParams(
-                server_params= StdioServerParameters(
-                    command='npx',
+                server_params=StdioServerParameters(
+                    command="npx",
                     args=[
                         "-y",
-                        "@modelcontextprotocol/server-gogle-maps"
+                        "@modelcontextprotocol/server-google-maps",
                     ],
                     env={
-                        "GOOGLE_MAPS_API_KEY":google_maps_api_key
-                    }
+                        "GOOGLE_MAPS_API_KEY": GOOGLE_MAPS_API_KEY,
+                    },
                 ),
             ),
         )
     ],
 )
-
-
-
