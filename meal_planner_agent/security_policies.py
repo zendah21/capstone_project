@@ -1,7 +1,7 @@
 # security_policies.py
 from google.genai import types as genai_types
 from google.ai.generativelanguage_v1beta.types import SafetySetting, HarmCategory, HarmBlockThreshold
-from config import MAX_OUTPUT_TOKENS_CORE
+from meal_planner_agent.config import MAX_OUTPUT_TOKENS_CORE
 
 SAFETY_SETTINGS = [
     SafetySetting(

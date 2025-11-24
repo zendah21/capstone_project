@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 MAPBOX_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN")
-if not MAPBOX_TOKEN:
-    raise RuntimeError("MAPBOX_ACCESS_TOKEN is not set. Please add it to your .env file.")
 
 
 async def search_nearby_stores(
@@ -38,8 +36,9 @@ async def search_nearby_stores(
       {"results": [ {name, address, lat, lng, distance_meters, source, raw}, ... ]}
     """
 
+    # Guard: if the token is missing at runtime, fail gracefully instead of crashing import
     if not MAPBOX_TOKEN:
-        raise RuntimeError("MAPBOX_ACCESS_TOKEN is not set")
+        return {"results": []}
 
     base_url = "https://api.mapbox.com/search/geocode/v6/forward"
 
