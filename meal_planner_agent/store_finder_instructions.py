@@ -1,90 +1,68 @@
-from typing import List, Optional, Dict, Any
+# meal_planner_agent/store_finder_instructions.py
+from __future__ import annotations
+
+from typing import List
 
 from pydantic import BaseModel, Field
 
 
-# ========= ADK structured output schemas =========
-
-
-class StoreResult(BaseModel):
-    """
-    One candidate store, normalized for the StoreFinderAgent.
-    Can come from web search (no coordinates) or from a places API (with coords).
-    """
-    name: str = Field(description="Name of the store, supermarket, or hypermarket.")
-    address: Optional[str] = Field(
-        default=None,
-        description="Human-readable store address or description if known."
-    )
-    lat: Optional[float] = Field(
-        default=None,
-        description="Latitude of the store, if available."
-    )
-    lng: Optional[float] = Field(
-        default=None,
-        description="Longitude of the store, if available."
-    )
-    distance_meters: Optional[float] = Field(
-        default=None,
-        description="Approximate distance from the user in meters, if available."
-    )
-    source: str = Field(
-        description="Which provider this result came from (e.g. 'google_search', 'mapbox', 'internal')."
-    )
-    extra: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Optional extra metadata (rating, opening_hours, URL, etc.)."
+class StoreLocation(BaseModel):
+    name: str = Field(description="Human-readable store name.")
+    address: str = Field(description="Short address or description.")
+    latitude: float = Field(description="Latitude of the store.")
+    longitude: float = Field(description="Longitude of the store.")
+    distance_m: float = Field(
+        default=0.0,
+        description="Approximate distance in meters if provided by Mapbox; 0 if unknown.",
     )
 
 
 class StoreFinderOutput(BaseModel):
-    """
-    Output of store_finder_agent.
-
-    - explanation: natural language summary / recommendation.
-    - stores: list of candidate stores the agent considered.
-    """
+    query: str = Field(description="Original location / store query.")
     explanation: str = Field(
-        description="Natural language explanation of the recommended stores and how to choose."
+        description="Short explanation of how these stores help the user and any limitations (no reviews/hours)."
     )
-    stores: List[StoreResult] = Field(
-        description="List of nearby stores the agent suggests or compares."
+    stores: List[StoreLocation] = Field(
+        default_factory=list,
+        description="List of nearby relevant stores.",
     )
 
-
-# ========= Instructions (aligned with StoreFinderOutput) =========
 
 STORE_FINDER_INSTRUCTIONS = """
-You are StoreFinderAgent in a multi-agent meal-planning system.
+You are StoreFinder, a tool-using agent that helps the user find nearby grocery
+stores or markets for their meal plan.
 
-ROLE
-----
-- You are NOT user-facing. You only talk to the orchestrator.
-- Receive ONE JSON input and return ONE JSON matching StoreFinderOutput. No markdown fences.
+TOOLS & LIMITATIONS (VERY IMPORTANT):
+- You may ONLY use the `search_nearby_stores` tool to look up locations.
+- Mapbox data DOES NOT include rich business info like reviews, ratings, or
+  opening hours, so NEVER invent them.
+- Focus on places that are relevant for buying ingredients (supermarkets,
+  groceries, hypermarkets, co-ops, etc.), not random POIs.
 
-LOCATION RULES
---------------
-- Never ask for location. Use the query/user_location provided and do the best search you can.
-- Food-only scope (supermarket, hypermarket, grocery, butcher, bakery, fish market, food markets in malls).
+BEHAVIOR:
+- ALWAYS call the `search_nearby_stores` tool with a clear query derived from
+  the user's text (e.g., "supermarket near Salmiya, Kuwait").
+- If the user gives a vague query with no city/area (e.g. "find a store"),
+  DO NOT guess. Instead:
+    - Set a concise explanation asking the user to provide the nearest area/city.
+    - Return stores = [].
+- If the tool returns an error or no useful stores, explain that briefly and
+  return stores = [] (do not fabricate stores).
 
-INPUT (do not echo)
-- query: string describing the food-related store search (e.g., "supermarket in <area>").
-- user_location: { "lat": <float>, "lng": <float> } or null/missing.
-- max_results: integer.
+OUTPUT FORMAT:
+You MUST respond ONLY with a JSON object that matches the StoreFinderOutput schema:
 
-TOOL
-- Call search_nearby_stores once with query, user_location, max_results.
-
-PROCESS
-1) Call the tool.
-2) Map each result to StoreResult (name, address, lat, lng, distance_meters, source, extra=raw).
-3) Choose best options by proximity when available; you may return all.
-4) Build explanation mentioning top 1-3 and approximate distance when present.
-
-EMPTY RESULTS
-- If no usable results, still return:
-  { "explanation": "...could not find... you can usually find large supermarkets...", "stores": [] }
-
-OUTPUT FORMAT
-- Exactly one JSON object matching StoreFinderOutput. No extra keys, no fences, no commentary.
+{
+  "query": "<string>",
+  "explanation": "<string>",
+  "stores": [
+    {
+      "name": "<string>",
+      "address": "<string>",
+      "latitude": <float>,
+      "longitude": <float>,
+      "distance_m": <float>
+    }
+  ]
+}
 """
