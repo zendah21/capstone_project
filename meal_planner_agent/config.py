@@ -1,3 +1,6 @@
+# meal_planner_agent/config.py
+from __future__ import annotations
+
 from google.genai import types as genai_types
 
 MODEL_NAME = "gemini-2.0-flash"
@@ -9,7 +12,6 @@ TEMPERATURE_ORCH = 0.6         # a bit more chatty for the orchestrator
 TOP_P = 0.9
 TOP_K = 40
 
-
 # Hard cap on tokens the model can output for one response
 MAX_OUTPUT_TOKENS_CORE = 1200
 MAX_OUTPUT_TOKENS_ORCH = 1600
@@ -18,8 +20,10 @@ MAX_OUTPUT_TOKENS_ORCH = 1600
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 2.0
 
+# ---------------------------------------------------------------------------
+# 1. Safety settings
+# ---------------------------------------------------------------------------
 
-# Basic safety settings (use HarmBlockThreshold, NOT SafetyThreshold)
 SAFETY_SETTINGS = [
     genai_types.SafetySetting(
         category=genai_types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
@@ -36,11 +40,8 @@ SAFETY_SETTINGS = [
 ]
 
 # ---------------------------------------------------------------------------
-# 4. Helper: Build GenerateContentConfig for each agent
+# 2. Helper to build GenerateContentConfig
 # ---------------------------------------------------------------------------
-
-
-from google.genai import types as genai_types
 
 def build_generate_content_config(
     temperature: float,
@@ -60,16 +61,20 @@ def build_generate_content_config(
         response_mime_type=response_mime_type,
     )
 
+# ---------------------------------------------------------------------------
+# 3. Configs used by agents
+# ---------------------------------------------------------------------------
+
 # Core JSON agents (profile, core planner, shopping list, store finder)
 CORE_GEN_CONFIG = build_generate_content_config(
     temperature=TEMPERATURE_CORE,
     max_tokens=MAX_OUTPUT_TOKENS_CORE,
-    response_mime_type="application/json",   #FORCE pure JSON
+    response_mime_type="application/json",   # FORCE pure JSON
 )
 
-# Orchestrator: chatty, natural language, no JSON constraint
+# Orchestrator: chatty, natural language, strongly discourage JSON
 ORCH_GEN_CONFIG = build_generate_content_config(
     temperature=TEMPERATURE_ORCH,
     max_tokens=MAX_OUTPUT_TOKENS_ORCH,
-    response_mime_type=None,                 #free-form text
+    response_mime_type="text/plain",         # bias away from JSON/structured output
 )

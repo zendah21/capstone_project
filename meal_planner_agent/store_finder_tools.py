@@ -1,85 +1,147 @@
-# store_finder_tools.py
-from typing import Dict, Any, List, Optional
+# meal_planner_agent/store_finder_tools.py
+from __future__ import annotations
+
+import logging
 import os
-import httpx
-from dotenv import load_dotenv
+import uuid
+from typing import Dict, List, Optional
 
-load_dotenv()
-MAPBOX_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN")
+import requests
+
+logger = logging.getLogger(__name__)
+
+MAPBOX_ACCESS_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN")
+SEARCHBOX_SUGGEST_URL = "https://api.mapbox.com/search/searchbox/v1/suggest"
+SEARCHBOX_RETRIEVE_URL = "https://api.mapbox.com/search/searchbox/v1/retrieve"
 
 
-async def search_nearby_stores(
-    tool_context,
+def search_nearby_stores(
     query: str,
-    user_location: Optional[Dict[str, float]] = None,
-    max_results: int = 8,
-) -> Dict[str, Any]:
+    limit: Optional[int] = None,
+    country: Optional[str] = "kw",
+    categories: str = "supermarket,grocery,hypermarket,market,food_and_drink,food_and_beverage",
+) -> Dict[str, object]:
     """
-    ADK tool: search_nearby_stores
+    Find nearby food stores using Mapbox Search Box (suggest + retrieve).
 
-    Parameters (from agent):
-      - query:
-          Free-text like:
-            "supermarket in Sabah Al Salem, Mubarak Al-Kabeer, Kuwait"
-            "hypermarket near Fahaheel, Kuwait"
-            "butcher in Salmiya, Kuwait"
-      - user_location (optional):
-          {
-            "lat": <float>,
-            "lng": <float>
-          }
-        If provided and numeric, we pass it as a Mapbox proximity hint.
-        If None or invalid, we just search by query text.
-      - max_results: max number of places to return.
-
-    Returns:
-      {"results": [ {name, address, lat, lng, distance_meters, source, raw}, ... ]}
+    - Filters to Kuwait by default to avoid far-away noise.
+    - Returns only store-like POIs; never bare city/region entries.
+    - On failure, returns features=[] with an error message.
     """
 
-    # Guard: if the token is missing at runtime, fail gracefully instead of crashing import
-    if not MAPBOX_TOKEN:
-        return {"results": []}
+    if not MAPBOX_ACCESS_TOKEN:
+        raise RuntimeError("MAPBOX_ACCESS_TOKEN environment variable is not set.")
 
-    base_url = "https://api.mapbox.com/search/geocode/v6/forward"
-
-    # Base params: query + limit + token
-    params = {
+    session_token = str(uuid.uuid4())
+    suggest_params = {
         "q": query,
-        "limit": max_results,
-        "access_token": MAPBOX_TOKEN,
-        "types": "poi",  # points of interest (supermarkets, shops, etc.)
+        "access_token": MAPBOX_ACCESS_TOKEN,
+        "session_token": session_token,
+        "poi_category": categories,
     }
+    if country:
+        suggest_params["country"] = country
+    if limit:
+        suggest_params["limit"] = limit
 
-    # If we have usable lat/lng, add 'proximity' (Mapbox uses lon,lat)
-    if user_location is not None:
-        lat = user_location.get("lat")
-        lng = user_location.get("lng")
-        if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
-            params["proximity"] = f"{lng},{lat}"
+    try:
+        suggest_resp = requests.get(SEARCHBOX_SUGGEST_URL, params=suggest_params, timeout=10)
+        suggest_resp.raise_for_status()
+        suggest_data = suggest_resp.json()
+    except Exception:
+        logger.exception("Mapbox store suggest failed query=%r", query)
+        return {"query": query, "features": [], "error": "Store lookup failed. Try another area or wording."}
 
-    async with httpx.AsyncClient(timeout=8.0) as client:
-        resp = await client.get(base_url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
+    suggestions = suggest_data.get("suggestions", [])
+    store_results: List[Dict[str, object]] = []
 
-    features = data.get("features", [])
+    for suggestion in suggestions:
+        mapbox_id = suggestion.get("mapbox_id")
+        if not mapbox_id:
+            continue
 
-    normalized: List[Dict[str, Any]] = []
-    for f in features:
-        props = f.get("properties", {})
-        coords = f.get("geometry", {}).get("coordinates", [None, None])
-        lng_f, lat_f = coords[0], coords[1]
+        retrieve_params = {
+            "access_token": MAPBOX_ACCESS_TOKEN,
+            "session_token": session_token,
+        }
 
-        normalized.append(
+        try:
+            retrieve_resp = requests.get(
+                f"{SEARCHBOX_RETRIEVE_URL}/{mapbox_id}",
+                params=retrieve_params,
+                timeout=10,
+            )
+            retrieve_resp.raise_for_status()
+            retrieve_data = retrieve_resp.json()
+        except Exception:
+            logger.error("Mapbox retrieve failed mapbox_id=%s query=%r", mapbox_id, query)
+            continue
+
+        retrieved_features = retrieve_data.get("features") or []
+        if not retrieved_features:
+            continue
+
+        feature = retrieved_features[0]
+        props = feature.get("properties", {}) or {}
+        coords = feature.get("geometry", {}).get("coordinates", [None, None])
+
+        country_code = (props.get("country") or "").lower()
+        if country and country_code and country_code != country.lower():
+            continue
+
+        categories_list = props.get("categories") or props.get("poi_category") or []
+        if isinstance(categories_list, str):
+            categories_list = [categories_list]
+
+        store_results.append(
             {
-                "name": props.get("name") or f.get("place_name"),
-                "address": props.get("full_address") or f.get("place_name"),
-                "lat": lat_f,
-                "lng": lng_f,
-                "distance_meters": props.get("distance"),
-                "source": "mapbox",
-                "raw": props,  # optional: extra metadata
+                "name": feature.get("name") or props.get("name") or "",
+                "address": props.get("full_address")
+                or props.get("place_formatted")
+                or props.get("address")
+                or "",
+                "longitude": coords[0],
+                "latitude": coords[1],
+                "distance_m": props.get("distance"),
+                "mapbox_id": mapbox_id,
+                "feature_type": props.get("feature_type"),
+                "categories": categories_list,
+                "brand": props.get("brand"),
+                "country": props.get("country"),
+                "place_formatted": props.get("place_formatted"),
+                "full_address": props.get("full_address"),
+                "raw_properties": props,
+                "context": feature.get("context"),
             }
         )
 
-    return {"results": normalized}
+    # Keep obvious store names if present; otherwise return everything we got.
+    store_keywords = (
+        "market",
+        "supermarket",
+        "hypermarket",
+        "grocery",
+        "mart",
+        "store",
+        "coop",
+        "co-op",
+        "carrefour",
+        "sultan",
+        "lulu",
+        "city centre",
+        "city center",
+        "saveco",
+    )
+
+    def is_store_name(name: str) -> bool:
+        lowercase_name = (name or "").lower()
+        return any(keyword in lowercase_name for keyword in store_keywords)
+
+    filtered_stores = [store for store in store_results if is_store_name(store.get("name", ""))]
+    output_stores = filtered_stores if filtered_stores else store_results
+
+    logger.info("search_nearby_stores query=%r store_results=%d", query, len(output_stores))
+    return {
+        "query": query,
+        "features": output_stores,
+    }

@@ -1,3 +1,4 @@
+# meal_planner_agent/agent.py
 """
 ADK Web app: Multi-step Meal Planner + dynamic SQLite DB tools + session + memory.
 
@@ -13,22 +14,19 @@ Tools (plain Python functions; ADK wraps them automatically):
 - execute_sql: run arbitrary SQL (CREATE TABLE, ALTER TABLE, INSERT, UPDATE, SELECT, ...).
 
 Agents:
-- meal_planner_core_agent:
-    Low-level agent that accepts a JSON `meal_request` and returns a JSON meal plan.
+- meal_planner_core_agent: strict JSON meal planner (MealPlanOutput schema).
+- meal_profile_agent: fills missing profile fields (JSON).
+- meal_ingredients_agent: turns plan into shopping list (JSON).
+- restaurant_agent: suggests restaurants when the user wants to eat out.
+- root_agent (meal_planner_agent): orchestrator that talks to the user and
+  NEVER returns raw JSON — only friendly natural language.
 
-- meal_profile_agent:
-    Helper agent that takes partial user info + conversation context,
-    fills missing fields with smart defaults, and returns a complete `meal_request`.
-
-- root_agent (meal_planner_agent):
-    User-facing orchestrator. Talks to the user, collects key fields,
-    optionally delegates missing-field handling to `meal_profile_agent`,
-    and only when the request is ready delegates to `meal_planner_core_agent`.
-    It can also use SQLite + load_memory as long-term memory.
-
-App:
-- name: my_agent
-- root_agent: meal_planner_agent
+Important architectural decision:
+- Instead of using `sub_agents=[...]` (which causes `transfer_to_agent` bubbles
+  and visible hand-offs in the UI), we wrap specialist agents as tools using
+  `AgentTool`. The root orchestrator calls them like normal tools, keeps full
+  control of the conversation, and rewrites all structured outputs into
+  human-friendly text.
 """
 
 from __future__ import annotations
@@ -41,27 +39,45 @@ import time
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
-import os
-
 from google.adk.agents import LlmAgent
 from google.adk.apps import App
+from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.auth.credential_service.in_memory_credential_service import (
+    InMemoryCredentialService,
+)
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.runners import Runner
+from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.tools import load_memory
+from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.tool_context import ToolContext
-from google.genai import types as genai_types
 
-from meal_planner_agent.config import MODEL_NAME,ORCH_GEN_CONFIG
-
+from meal_planner_agent.config import MODEL_NAME, ORCH_GEN_CONFIG
 from meal_planner_agent.meal_planner_instructions import meal_planner_core_agent
-from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent
 from meal_planner_agent.meal_profile_instructions import meal_profile_agent
+from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent
+from meal_planner_agent.store_finder_tools import search_nearby_stores
 from meal_planner_agent.restaurant_agent import restaurant_agent
-from meal_planner_agent.store_finder_agent import store_finder_agent
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
+
+
+# ---------------------------------------------------------------------------
+# 0. Local subclass so the runner sees the root agent as coming from this package
+# ---------------------------------------------------------------------------
+
+class LocalLlmAgent(LlmAgent):
+    """
+    Thin subclass of LlmAgent so ADK's loader treats this module as the place
+    where the root agent lives. No behavior changes here.
+    """
+    pass
+
 
 load_dotenv()
 
 # SQLite DB path for dynamic structured memory
 DB_PATH = os.getenv("ASSISTANT_DB_PATH", "assistant_data.db")
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,7 +90,7 @@ def _get_identity_params(tool_context: ToolContext) -> Dict[str, Optional[str]]:
     Derive stable identity values for DB partitioning.
 
     - user_id: required partition key. Falls back to "user" if none is provided.
-    - session_id: optional; present only if the runner sets it (useful for per-session isolation).
+    - session_id: optional; present only if the runner sets it (per-session isolation).
     """
     user_id = getattr(tool_context, "user_id", None) or os.getenv("ASSISTANT_USER_ID") or "user"
     session_id = getattr(tool_context, "session_id", None) or os.getenv("ASSISTANT_SESSION_ID")
@@ -94,14 +110,14 @@ def _get_connection() -> sqlite3.Connection:
 
 
 # ---------------------------------------------------------------------------
-# 2. Dynamic DB tools (plain functions – no decorator)
+# 2. Dynamic DB tools (plain functions – ADK auto-wraps them as tools)
 # ---------------------------------------------------------------------------
 
 def inspect_schema(tool_context: ToolContext) -> Dict[str, Any]:
     """
     Inspect the current SQLite schema: list tables and their columns.
 
-    Returns:
+    Returns a structure like:
         {
           "tables": [
             {
@@ -115,34 +131,36 @@ def inspect_schema(tool_context: ToolContext) -> Dict[str, Any]:
           ]
         }
     """
-    conn = _get_connection()
-    cur = conn.cursor()
+    conn: Optional[sqlite3.Connection] = None
+    try:
+        conn = _get_connection()
+        cur = conn.cursor()
 
-    cur.execute(
-        "SELECT name FROM sqlite_master "
-        "WHERE type='table' AND name NOT LIKE 'sqlite_%';"
-    )
-    tables = [row["name"] for row in cur.fetchall()]
+        cur.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+        )
+        tables = [row["name"] for row in cur.fetchall()]
 
-    result: List[Dict[str, Any]] = []
-    for tname in tables:
-        cur.execute(f"PRAGMA table_info({tname});")
-        cols = []
-        for col in cur.fetchall():
-            cols.append(
+        result: List[Dict[str, Any]] = []
+        for tname in tables:
+            cur.execute(f"PRAGMA table_info({tname});")
+            cols = [
                 {
-                    "cid": col["cid"],
-                    "name": col["name"],
-                    "type": col["type"],
-                    "notnull": col["notnull"],
-                    "default_value": col["dflt_value"],
-                    "pk": col["pk"],
+                    "name": row["name"],
+                    "type": row["type"],
+                    "notnull": row["notnull"],
+                    "pk": row["pk"],
                 }
-            )
-        result.append({"name": tname, "columns": cols})
+                for row in cur.fetchall()
+            ]
+            result.append({"name": tname, "columns": cols})
 
-    conn.close()
-    return {"tables": result}
+        logger.info("inspect_schema tables=%d", len(result))
+        return {"tables": result}
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def execute_sql(
@@ -172,6 +190,8 @@ def execute_sql(
     Safety:
         - DROP TABLE is blocked.
         - DELETE without WHERE is blocked.
+        - ATTACH and PRAGMA are blocked.
+        - Only one statement per call is allowed.
 
     Note:
         - The current ADK user_id is automatically injected into params
@@ -194,6 +214,7 @@ def execute_sql(
     if sql_stripped.count(";") > 1:
         raise ValueError("Only single SQL statements are allowed.")
 
+    # Parse params_json into a dict
     params: Dict[str, Any] = {}
     if params_json:
         try:
@@ -212,7 +233,7 @@ def execute_sql(
     if ids["session_id"] and "session_id" not in params:
         params["session_id"] = ids["session_id"]
 
-    conn = None
+    conn: Optional[sqlite3.Connection] = None
     start = time.monotonic()
     try:
         conn = _get_connection()
@@ -244,43 +265,74 @@ def execute_sql(
             )
             return {"rowcount": affected}
     finally:
-        if conn:
+        if conn is not None:
             conn.close()
 
 
-
-
-
+# ---------------------------------------------------------------------------
+# 3. Wrap specialist agents as tools (Agent-as-a-Tool pattern)
+#    NOTE: In your ADK version AgentTool only accepts `agent`, no `description`.
+#    The called agent's own name/description + the orchestrator instructions
+#    give the LLM enough guidance on when to use each tool.
+# ---------------------------------------------------------------------------
+meal_planner_core_tool = AgentTool(agent=meal_planner_core_agent)
+meal_profile_tool = AgentTool(agent=meal_profile_agent)
+meal_ingredients_tool = AgentTool(agent=meal_ingredients_agent)
+restaurant_tool = AgentTool(agent=restaurant_agent)
 
 # ---------------------------------------------------------------------------
-# 8. Orchestrator agent -- ROOT for ADK Web
+# 4. Root orchestrator agent (the ONLY agent that talks to the user)
 # ---------------------------------------------------------------------------
 
-root_agent = LlmAgent(
+root_agent = LocalLlmAgent(
     name="meal_planner_agent",
     description=(
         "Conversational meal-planning assistant. Talks to the user, collects "
         "key fields for `meal_request`, optionally delegates missing-field "
         "handling to `meal_profile_agent`, then delegates to "
-        "`meal_planner_core_agent` to generate the final plan. **It can also "
-        "use `meal_ingredients_agent` to generate a shopping list.** It can also "
+        "`meal_planner_core_agent` to generate the final plan. It can also "
+        "use `meal_ingredients_agent` to generate a shopping list. It can "
         "remember user profiles and preferences in a dynamic SQLite DB and "
-        "via semantic memory and Always convert any structured output (JSON, dictionaries, tool results) into"
-        "natural language (paragraphs, bullet lists, tables) BEFORE replying."),
-    
+        "via semantic memory and must ALWAYS convert any structured output "
+        "(JSON, dictionaries, tool results) into natural language "
+        "(paragraphs, bullet lists, tables) BEFORE replying to the user."
+    ),
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
-    # Orchestrator can call sub-agents
-    sub_agents=[meal_planner_core_agent, meal_profile_agent, meal_ingredients_agent, store_finder_agent, restaurant_agent], 
-    tools=[load_memory, inspect_schema, execute_sql]
+    # No sub_agents here on purpose — we don't want `transfer_to_agent` handoff.
+    # Instead, we expose specialist agents as tools via AgentTool.
+    tools=[
+        load_memory,         # semantic long-term memory
+        inspect_schema,      # dynamic DB schema inspection
+        execute_sql,         # dynamic DB read/write with safety checks
+        search_nearby_stores,  # Mapbox store finder (function tool)
+        meal_planner_core_tool,   # agent-as-tool: generate meal plan
+        meal_profile_tool,        # agent-as-tool: fill missing profile fields
+        meal_ingredients_tool,    # agent-as-tool: build shopping list
+        restaurant_tool,          # agent-as-tool: restaurant suggestions
+    ],
 )
 
+
 # ---------------------------------------------------------------------------
-# 9. App object for ADK Web
+# 5. App object for ADK Web
 # ---------------------------------------------------------------------------
 
 app = App(
     name="meal_planner_agent",
     root_agent=root_agent,
 )
+
+# Runner is usually created by ADK Web / CLI, but you can create one manually
+# in tests or scripts like:
+#
+#   runner = Runner(
+#       root_agent=root_agent,
+#       session_service=InMemorySessionService(),
+#       memory_service=InMemoryMemoryService(),
+#       credential_service=InMemoryCredentialService(),
+#       artifact_service=InMemoryArtifactService(),
+#   )
+#
+# and then call runner.run(...) in your own tests.
