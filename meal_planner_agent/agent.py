@@ -17,10 +17,16 @@ Agents:
 - meal_planner_core_agent: strict JSON meal planner (MealPlanOutput schema).
 - meal_profile_agent: fills missing profile fields (JSON).
 - meal_ingredients_agent: turns plan into shopping list (JSON).
-- store_finder_agent: uses Mapbox tool to find nearby stores (JSON).
 - restaurant_agent: suggests restaurants when the user wants to eat out.
 - root_agent (meal_planner_agent): orchestrator that talks to the user and
   NEVER returns raw JSON — only friendly natural language.
+
+Important architectural decision:
+- Instead of using `sub_agents=[...]` (which causes `transfer_to_agent` bubbles
+  and visible hand-offs in the UI), we wrap specialist agents as tools using
+  `AgentTool`. The root orchestrator calls them like normal tools, keeps full
+  control of the conversation, and rewrites all structured outputs into
+  human-friendly text.
 """
 
 from __future__ import annotations
@@ -43,6 +49,7 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.tools import load_memory
+from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.tool_context import ToolContext
 
 from meal_planner_agent.config import MODEL_NAME, ORCH_GEN_CONFIG
@@ -53,8 +60,16 @@ from meal_planner_agent.store_finder_tools import search_nearby_stores
 from meal_planner_agent.restaurant_agent import restaurant_agent
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
 
-# Local subclass so the runner sees the root agent as coming from this package
+
+# ---------------------------------------------------------------------------
+# 0. Local subclass so the runner sees the root agent as coming from this package
+# ---------------------------------------------------------------------------
+
 class LocalLlmAgent(LlmAgent):
+    """
+    Thin subclass of LlmAgent so ADK's loader treats this module as the place
+    where the root agent lives. No behavior changes here.
+    """
     pass
 
 
@@ -95,14 +110,14 @@ def _get_connection() -> sqlite3.Connection:
 
 
 # ---------------------------------------------------------------------------
-# 2. Dynamic DB tools (plain functions – no decorator)
+# 2. Dynamic DB tools (plain functions – ADK auto-wraps them as tools)
 # ---------------------------------------------------------------------------
 
 def inspect_schema(tool_context: ToolContext) -> Dict[str, Any]:
     """
     Inspect the current SQLite schema: list tables and their columns.
 
-    Returns:
+    Returns a structure like:
         {
           "tables": [
             {
@@ -199,6 +214,7 @@ def execute_sql(
     if sql_stripped.count(";") > 1:
         raise ValueError("Only single SQL statements are allowed.")
 
+    # Parse params_json into a dict
     params: Dict[str, Any] = {}
     if params_json:
         try:
@@ -254,7 +270,18 @@ def execute_sql(
 
 
 # ---------------------------------------------------------------------------
-# 3. Root orchestrator agent
+# 3. Wrap specialist agents as tools (Agent-as-a-Tool pattern)
+#    NOTE: In your ADK version AgentTool only accepts `agent`, no `description`.
+#    The called agent's own name/description + the orchestrator instructions
+#    give the LLM enough guidance on when to use each tool.
+# ---------------------------------------------------------------------------
+meal_planner_core_tool = AgentTool(agent=meal_planner_core_agent)
+meal_profile_tool = AgentTool(agent=meal_profile_agent)
+meal_ingredients_tool = AgentTool(agent=meal_ingredients_agent)
+restaurant_tool = AgentTool(agent=restaurant_agent)
+
+# ---------------------------------------------------------------------------
+# 4. Root orchestrator agent (the ONLY agent that talks to the user)
 # ---------------------------------------------------------------------------
 
 root_agent = LocalLlmAgent(
@@ -263,8 +290,8 @@ root_agent = LocalLlmAgent(
         "Conversational meal-planning assistant. Talks to the user, collects "
         "key fields for `meal_request`, optionally delegates missing-field "
         "handling to `meal_profile_agent`, then delegates to "
-        "`meal_planner_core_agent` to generate the final plan. **It can also "
-        "use `meal_ingredients_agent` to generate a shopping list.** It can also "
+        "`meal_planner_core_agent` to generate the final plan. It can also "
+        "use `meal_ingredients_agent` to generate a shopping list. It can "
         "remember user profiles and preferences in a dynamic SQLite DB and "
         "via semantic memory and must ALWAYS convert any structured output "
         "(JSON, dictionaries, tool results) into natural language "
@@ -273,18 +300,23 @@ root_agent = LocalLlmAgent(
     model=MODEL_NAME,
     instruction=ORCHESTRATOR_INSTRUCTIONS,
     generate_content_config=ORCH_GEN_CONFIG,
-    # Orchestrator can call sub-agents (no hand-off for store finder; handled via tool)
-    sub_agents=[
-        meal_planner_core_agent,
-        meal_profile_agent,
-        meal_ingredients_agent,
-        restaurant_agent,
+    # No sub_agents here on purpose — we don't want `transfer_to_agent` handoff.
+    # Instead, we expose specialist agents as tools via AgentTool.
+    tools=[
+        load_memory,         # semantic long-term memory
+        inspect_schema,      # dynamic DB schema inspection
+        execute_sql,         # dynamic DB read/write with safety checks
+        search_nearby_stores,  # Mapbox store finder (function tool)
+        meal_planner_core_tool,   # agent-as-tool: generate meal plan
+        meal_profile_tool,        # agent-as-tool: fill missing profile fields
+        meal_ingredients_tool,    # agent-as-tool: build shopping list
+        restaurant_tool,          # agent-as-tool: restaurant suggestions
     ],
-    tools=[load_memory, inspect_schema, execute_sql, search_nearby_stores],
 )
 
+
 # ---------------------------------------------------------------------------
-# 4. App object for ADK Web
+# 5. App object for ADK Web
 # ---------------------------------------------------------------------------
 
 app = App(
@@ -292,3 +324,15 @@ app = App(
     root_agent=root_agent,
 )
 
+# Runner is usually created by ADK Web / CLI, but you can create one manually
+# in tests or scripts like:
+#
+#   runner = Runner(
+#       root_agent=root_agent,
+#       session_service=InMemorySessionService(),
+#       memory_service=InMemoryMemoryService(),
+#       credential_service=InMemoryCredentialService(),
+#       artifact_service=InMemoryArtifactService(),
+#   )
+#
+# and then call runner.run(...) in your own tests.

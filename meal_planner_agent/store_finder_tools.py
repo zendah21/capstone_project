@@ -24,7 +24,7 @@ def search_nearby_stores(
     """
     Find nearby food stores using Mapbox Search Box (suggest + retrieve).
 
-    - Filters to Kuwait by default.
+    - Filters to Kuwait by default to avoid far-away noise.
     - Returns only store-like POIs; never bare city/region entries.
     - On failure, returns features=[] with an error message.
     """
