@@ -53,9 +53,9 @@ from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.tool_context import ToolContext
 
 from meal_planner_agent.config import MODEL_NAME, ORCH_GEN_CONFIG
-from meal_planner_agent.meal_planner_instructions import meal_planner_core_agent
+from meal_planner_agent.meal_planner_instructions import meal_planner_core_agent,robust_meal_planner
 from meal_planner_agent.meal_profile_instructions import meal_profile_agent
-from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent
+from meal_planner_agent.shopping_list_instructions import meal_ingredients_agent,robust_list_creator
 from meal_planner_agent.store_finder_tools import search_nearby_stores
 from meal_planner_agent.restaurant_agent import restaurant_agent
 from meal_planner_agent.orchestrator_instructions import ORCHESTRATOR_INSTRUCTIONS
@@ -280,6 +280,7 @@ meal_profile_tool = AgentTool(agent=meal_profile_agent)
 meal_ingredients_tool = AgentTool(agent=meal_ingredients_agent)
 restaurant_tool = AgentTool(agent=restaurant_agent)
 
+
 # ---------------------------------------------------------------------------
 # 4. Root orchestrator agent (the ONLY agent that talks to the user)
 # ---------------------------------------------------------------------------
@@ -310,8 +311,9 @@ root_agent = LocalLlmAgent(
         meal_planner_core_tool,   # agent-as-tool: generate meal plan
         meal_profile_tool,        # agent-as-tool: fill missing profile fields
         meal_ingredients_tool,    # agent-as-tool: build shopping list
-        restaurant_tool,          # agent-as-tool: restaurant suggestions
+        restaurant_tool,      # agent-as-tool: restaurant suggestions
     ],
+    sub_agents=[robust_list_creator,robust_meal_planner]
 )
 
 

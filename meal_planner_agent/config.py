@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from google.genai import types as genai_types
+from google.adk.agents.callback_context import CallbackContext
+from google.genai.types import Content
 
 MODEL_NAME = "gemini-2.0-flash"
 
@@ -78,3 +80,7 @@ ORCH_GEN_CONFIG = build_generate_content_config(
     max_tokens=MAX_OUTPUT_TOKENS_ORCH,
     response_mime_type="text/plain",         # bias away from JSON/structured output
 )
+
+def suppress_output_callback(callback_context: CallbackContext) -> Content:
+    """Suppresses the output of the agent by returning an empty Content object."""
+    return Content()

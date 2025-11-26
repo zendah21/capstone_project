@@ -1,10 +1,11 @@
 from typing import List
 from pydantic import BaseModel, Field
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent,LoopAgent
 from google.genai import types as genai_types
 
-from meal_planner_agent.config import CORE_GEN_CONFIG, MODEL_NAME
+from meal_planner_agent.run_smoke_tests import MealPlanValidationChecker
+from meal_planner_agent.config import CORE_GEN_CONFIG, MODEL_NAME,suppress_output_callback
 
 
 # --------- OUTPUT SCHEMA FOR CORE AGENT (ADK STANDARD) ---------
@@ -97,4 +98,16 @@ meal_planner_core_agent = LlmAgent(
     # ADK structured outputs:
     output_schema=MealPlanOutput,   # enforce schema
     output_key="meal_plan_json",    # saved in state['meal_plan_json']
+)
+
+
+robust_meal_planner = LoopAgent(
+    name="robust_meal_planner",
+    description="A robust meal planner that retries if it fails.",
+    sub_agents=[
+       meal_planner_core_agent,
+        MealPlanValidationChecker(name="meal_validation_checker"),
+    ],
+    max_iterations=3,
+    after_agent_callback=suppress_output_callback,
 )

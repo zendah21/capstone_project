@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent,LoopAgent
 
-from meal_planner_agent.config import CORE_GEN_CONFIG, MODEL_NAME
+from meal_planner_agent.config import CORE_GEN_CONFIG, MODEL_NAME,suppress_output_callback
+from meal_planner_agent.run_smoke_tests import ShoppingListValidationChecker
 
 
 # ========= ADK structured output schema =========
@@ -57,4 +58,16 @@ meal_ingredients_agent = LlmAgent(
     # ADK structured output:
     output_schema=ShoppingListOutput,      # enforce JSON with shopping_list_text field
     output_key="shopping_list_result",     # stored in state['shopping_list_result']
+)
+
+
+robust_list_creator = LoopAgent(
+    name="robust_list_creator",
+    description="A robust list creator that retries if it fails.",
+    sub_agents=[
+       meal_ingredients_agent,
+        ShoppingListValidationChecker(name="list_validation_checker"),
+    ],
+    max_iterations=3,
+    after_agent_callback=suppress_output_callback,
 )
